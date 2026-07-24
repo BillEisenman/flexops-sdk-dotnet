@@ -124,6 +124,14 @@ public sealed class FlexOpsClient : IDisposable
         return await _http.GetFromJsonAsync<T>(path, _jsonOptions, ct);
     }
 
+    /// <summary>Sends a GET request and returns the raw response bytes (e.g. a label PDF).</summary>
+    public async Task<byte[]?> GetBytesAsync(string path, CancellationToken ct = default)
+    {
+        var response = await _http.GetAsync(path, ct);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsByteArrayAsync(ct);
+    }
+
     /// <summary>Sends a POST request with a JSON body and deserializes the response.</summary>
     public async Task<TResponse?> PostAsync<TResponse>(string path, object? body = null, CancellationToken ct = default)
     {

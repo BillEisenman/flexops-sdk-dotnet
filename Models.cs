@@ -43,53 +43,81 @@ public sealed class PaginatedResponse<T>
     public int TotalPages { get; set; }
 }
 
-/// <summary>Shipping rate from a carrier.</summary>
+/// <summary>Shipping rate from a carrier. Matches the Gateway <c>ShippingRate</c> wire shape.</summary>
 public sealed class ShippingRate
 {
-    /// <summary>Carrier name (USPS, UPS, FedEx, DHL).</summary>
-    public string Carrier { get; set; } = string.Empty;
+    /// <summary>Carrier code (USPS, UPS, FEDEX, DHL).</summary>
+    public string CarrierCode { get; set; } = string.Empty;
 
-    /// <summary>Service name.</summary>
-    public string Service { get; set; } = string.Empty;
+    /// <summary>Human-readable carrier name.</summary>
+    public string CarrierName { get; set; } = string.Empty;
+
+    /// <summary>Service code.</summary>
+    public string ServiceCode { get; set; } = string.Empty;
+
+    /// <summary>Human-readable service name.</summary>
+    public string ServiceName { get; set; } = string.Empty;
 
     /// <summary>Rate in the given currency.</summary>
     public decimal Rate { get; set; }
 
     /// <summary>Currency code (e.g., USD).</summary>
-    public string Currency { get; set; } = string.Empty;
+    public string Currency { get; set; } = "USD";
 
-    /// <summary>Estimated transit days.</summary>
-    public int EstimatedDays { get; set; }
+    /// <summary>Estimated transit days, when known.</summary>
+    public int? EstimatedDays { get; set; }
 
-    /// <summary>Estimated delivery date.</summary>
-    public string? DeliveryDate { get; set; }
+    /// <summary>Estimated delivery date (ISO 8601), when known.</summary>
+    public string? EstimatedDeliveryDate { get; set; }
+
+    /// <summary>Whether tracking is included in the service.</summary>
+    public bool TrackingIncluded { get; set; }
 }
 
-/// <summary>Shipping label.</summary>
+/// <summary>Response from a rate-shopping request. Matches the Gateway <c>RateShoppingResponse</c>.</summary>
+public sealed class RateShoppingResponse
+{
+    /// <summary>The rates returned across all requested carriers.</summary>
+    public List<ShippingRate> Rates { get; set; } = [];
+
+    /// <summary>Currency the rates are expressed in.</summary>
+    public string Currency { get; set; } = "USD";
+}
+
+/// <summary>Shipping label. Matches the Gateway <c>ShippingLabel</c> wire shape.</summary>
 public sealed class Label
 {
     /// <summary>Unique label identifier.</summary>
     public string LabelId { get; set; } = string.Empty;
 
+    /// <summary>Carrier code the label was created for.</summary>
+    public string CarrierCode { get; set; } = string.Empty;
+
     /// <summary>Carrier tracking number.</summary>
     public string TrackingNumber { get; set; } = string.Empty;
-
-    /// <summary>Carrier name.</summary>
-    public string Carrier { get; set; } = string.Empty;
-
-    /// <summary>Service name.</summary>
-    public string Service { get; set; } = string.Empty;
 
     /// <summary>Label data (base64 or URL).</summary>
     public string LabelData { get; set; } = string.Empty;
 
     /// <summary>Label format (PDF, PNG, ZPL).</summary>
-    public string LabelFormat { get; set; } = string.Empty;
+    public string LabelFormat { get; set; } = "PDF";
 
-    /// <summary>Rate charged.</summary>
+    /// <summary>Rate charged for the label.</summary>
     public decimal Rate { get; set; }
 
-    /// <summary>Creation timestamp.</summary>
+    /// <summary>Currency the rate is expressed in.</summary>
+    public string Currency { get; set; } = "USD";
+
+    /// <summary>Return-label data, when a return label was also generated.</summary>
+    public string? ReturnLabelData { get; set; }
+
+    /// <summary>Originating order id when the label was purchased against an order.</summary>
+    public long? OrderId { get; set; }
+
+    /// <summary>Whether the label was generated in sandbox mode (no real postage).</summary>
+    public bool IsSandbox { get; set; }
+
+    /// <summary>Creation timestamp (ISO 8601).</summary>
     public string CreatedAt { get; set; } = string.Empty;
 }
 
