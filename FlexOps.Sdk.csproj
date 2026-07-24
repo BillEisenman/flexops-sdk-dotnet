@@ -10,7 +10,7 @@
     <!-- Package metadata -->
     <IsPackable>true</IsPackable>
     <PackageId>FlexOps.Sdk</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <Authors>FlexOps, LLC</Authors>
     <Company>FlexOps, LLC</Company>
     <Description>Official FlexOps Platform .NET SDK — typed, resource-based client for the multi-carrier shipping API (rates, labels, tracking, returns, webhooks, insurance, wallet, and more).</Description>

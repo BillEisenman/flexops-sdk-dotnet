@@ -81,10 +81,20 @@ public sealed class UspsResource
     // Shipping / Labels
     // -----------------------------------------------------------------------
 
-    /// <summary>Generate a domestic shipping label.</summary>
-    public async Task<ApiResponse<object>?> CreateDomesticLabelAsync(object body, CancellationToken ct = default)
+    /// <summary>
+    /// Generate a domestic USPS shipping label for an order via the reliable Gateway path
+    /// (<c>POST api/shipping/labels</c>). Supply a <c>LabelRequest</c> body with
+    /// <c>carrierCode: "USPS"</c> and <c>orderId</c> set: the order's ownership, status,
+    /// ship-method and addresses are validated server-side and postage is settled atomically.
+    /// Physical package fields (weight, dimensions, alcohol/dry-ice, confirmation, insurance)
+    /// are supplied here — they are not stored on the order. Returns the raw label.
+    /// </summary>
+    /// <param name="request">A <c>LabelRequest</c>: origin, destination, package,
+    /// <c>carrierCode: "USPS"</c>, <c>serviceCode</c>, and <c>orderId</c>.</param>
+    /// <param name="ct">Cancellation token.</param>
+    public async Task<Label?> CreateDomesticLabelAsync(object request, CancellationToken ct = default)
     {
-        return await _client.PostAsync<ApiResponse<object>>(Proxy("api/v3/Shipping/postUspsGenerateDomesticShippingLabel"), body, ct);
+        return await _client.PostAsync<Label>("api/shipping/labels", request, ct);
     }
 
     /// <summary>Generate a domestic return shipping label.</summary>
