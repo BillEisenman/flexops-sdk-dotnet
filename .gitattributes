@@ -1,0 +1,24 @@
+###############################################################################
+# Set default behavior to automatically normalize line endings.
+###############################################################################
+* text=auto
+
+###############################################################################
+# C# source files: enforce CRLF in the working tree to match .editorconfig
+# (end_of_line = crlf). Prevents `dotnet format --verify-no-changes` from
+# flagging ENDOFLINE violations when editors/tools write LF endings locally.
+#
+# Making this explicit rather than relying on core.autocrlf: autocrlf is a
+# per-machine setting, so without this rule the working-tree endings depend on
+# how each clone happens to be configured. The rest of the FlexOps repos carry
+# the same line.
+###############################################################################
+*.cs text eol=crlf
+
+###############################################################################
+# Shell scripts and git hooks: force LF in the working tree. Git Bash on
+# Windows cannot execute bash scripts with CRLF line endings (breaks with
+# "$'\r': command not found"). Overrides `* text=auto` + core.autocrlf=true.
+###############################################################################
+*.sh text eol=lf
+.githooks/** text eol=lf
