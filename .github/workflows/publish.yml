@@ -1,8 +1,17 @@
 name: Publish to NuGet
 
-# Publish FlexOps.Sdk to nuget.org when a vX.Y.Z tag is pushed.
-# Secret required:
-#   NUGET_API_KEY — a NuGet API key with push scope for FlexOps.Sdk
+# Publishes FlexOps.Sdk to nuget.org via trusted publishing (OIDC) — no stored
+# API key. Triggered on vX.Y.Z tag push or manual workflow_dispatch.
+#
+# One-time setup on nuget.org (required before the first run):
+#   1. Sign in as 'fasttrak' → account menu → Trusted Publishing → Add
+#   2. Package owner:     fasttrak
+#      Repository owner:  BillEisenman
+#      Repository:        flexops-sdk-dotnet
+#      Workflow file:     publish.yml
+#      Environment:       (leave blank)
+#
+# Docs: https://learn.microsoft.com/nuget/nuget-org/trusted-publishing
 
 on:
   push:
@@ -12,6 +21,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write   # mints the OIDC token GitHub exchanges for a short-lived NuGet key
 
 jobs:
   publish:
@@ -32,9 +42,15 @@ jobs:
       - name: Pack
         run: dotnet pack --configuration Release --no-build --output ./artifacts
 
+      - name: NuGet login (OIDC → short-lived key)
+        uses: NuGet/login@v1
+        id: nuget-login
+        with:
+          user: fasttrak
+
       - name: Publish
         run: >
           dotnet nuget push "./artifacts/*.nupkg"
-          --api-key ${{ secrets.NUGET_API_KEY }}
+          --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
           --source https://api.nuget.org/v3/index.json
           --skip-duplicate
