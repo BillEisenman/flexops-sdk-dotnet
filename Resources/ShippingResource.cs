@@ -28,18 +28,39 @@ public sealed class ShippingResource
     // -----------------------------------------------------------------------
 
     /// <summary>Get shipping rates from all configured carriers.</summary>
+    public async Task<RateShoppingResponse?> GetRatesAsync(RateShoppingRequest request, CancellationToken ct = default)
+    {
+        return await _client.PostAsync<RateShoppingResponse>("api/shipping/rates", request, ct);
+    }
+
+    /// <summary>Get shipping rates using an untyped request payload.</summary>
+    [Obsolete("Use the RateShoppingRequest overload.")]
     public async Task<RateShoppingResponse?> GetRatesAsync(object request, CancellationToken ct = default)
     {
         return await _client.PostAsync<RateShoppingResponse>("api/shipping/rates", request, ct);
     }
 
     /// <summary>Get the single cheapest rate across all carriers.</summary>
+    public async Task<ShippingRate?> GetCheapestRateAsync(RateShoppingRequest request, CancellationToken ct = default)
+    {
+        return await _client.PostAsync<ShippingRate>("api/shipping/rates/cheapest", request, ct);
+    }
+
+    /// <summary>Get the single cheapest rate using an untyped request payload.</summary>
+    [Obsolete("Use the RateShoppingRequest overload.")]
     public async Task<ShippingRate?> GetCheapestRateAsync(object request, CancellationToken ct = default)
     {
         return await _client.PostAsync<ShippingRate>("api/shipping/rates/cheapest", request, ct);
     }
 
     /// <summary>Get the single fastest rate across all carriers.</summary>
+    public async Task<ShippingRate?> GetFastestRateAsync(RateShoppingRequest request, CancellationToken ct = default)
+    {
+        return await _client.PostAsync<ShippingRate>("api/shipping/rates/fastest", request, ct);
+    }
+
+    /// <summary>Get the single fastest rate using an untyped request payload.</summary>
+    [Obsolete("Use the RateShoppingRequest overload.")]
     public async Task<ShippingRate?> GetFastestRateAsync(object request, CancellationToken ct = default)
     {
         return await _client.PostAsync<ShippingRate>("api/shipping/rates/fastest", request, ct);

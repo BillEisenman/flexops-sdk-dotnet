@@ -34,13 +34,18 @@ jobs:
           dotnet-version: '10.x'
 
       - name: Restore
-        run: dotnet restore
+        run: |
+          dotnet restore FlexOps.Sdk.csproj
+          dotnet restore tests/FlexOps.Sdk.ContractCheck/FlexOps.Sdk.ContractCheck.csproj
 
       - name: Build
-        run: dotnet build --configuration Release --no-restore
+        run: dotnet build FlexOps.Sdk.csproj --configuration Release --no-restore
+
+      - name: Check rate-shopping contract
+        run: dotnet run --project tests/FlexOps.Sdk.ContractCheck --configuration Release --no-restore
 
       - name: Pack
-        run: dotnet pack --configuration Release --no-build --output ./artifacts
+        run: dotnet pack FlexOps.Sdk.csproj --configuration Release --no-build --output ./artifacts
 
       - name: NuGet login (OIDC → short-lived key)
         uses: NuGet/login@v1
