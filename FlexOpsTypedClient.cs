@@ -19,7 +19,12 @@ namespace FlexOps.Sdk;
 /// using var client = new FlexOpsTypedClient("https://gateway.flexops.io", apiKey: "fxk_live_...");
 /// client.WorkspaceId = "ws_abc123";
 ///
-/// var rates = await client.Shipping.GetRatesAsync(new { fromZip = "10001", toZip = "90210", weight = 16 });
+/// var rates = await client.Shipping.GetRatesAsync(new RateShoppingRequest
+/// {
+///     Origin = new() { AddressLine1 = "123 Main St", City = "New York", StateProvince = "NY", PostalCode = "10001" },
+///     Destination = new() { AddressLine1 = "456 Oak Ave", City = "Los Angeles", StateProvince = "CA", PostalCode = "90210" },
+///     Package = new() { Weight = 16, WeightUnit = "oz" }
+/// });
 /// var label = await client.Shipping.CreateLabelAsync(new { carrier = "USPS", service = "Priority" });
 ///
 /// // Direct carrier operations

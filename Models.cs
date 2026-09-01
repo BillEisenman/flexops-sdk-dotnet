@@ -43,6 +43,69 @@ public sealed class PaginatedResponse<T>
     public int TotalPages { get; set; }
 }
 
+/// <summary>Canonical Gateway rate-shopping request.</summary>
+public sealed class RateShoppingRequest
+{
+    /// <summary>Ship-from address.</summary>
+    public required ShippingAddress Origin { get; init; }
+
+    /// <summary>Ship-to address.</summary>
+    public required ShippingAddress Destination { get; init; }
+
+    /// <summary>Parcel dimensions and weight.</summary>
+    public required ShippingPackage Package { get; init; }
+
+    /// <summary>Optional carrier-code filter.</summary>
+    public List<string>? Carriers { get; init; }
+}
+
+/// <summary>Address used by the normalized Gateway shipping API.</summary>
+public sealed class ShippingAddress
+{
+    /// <summary>Optional recipient or company name.</summary>
+    public string? Name { get; init; }
+
+    /// <summary>Primary street line.</summary>
+    public required string AddressLine1 { get; init; }
+
+    /// <summary>City or locality.</summary>
+    public required string City { get; init; }
+
+    /// <summary>State or province code.</summary>
+    public required string StateProvince { get; init; }
+
+    /// <summary>Postal code.</summary>
+    public required string PostalCode { get; init; }
+
+    /// <summary>ISO country code.</summary>
+    public string CountryCode { get; init; } = "US";
+}
+
+/// <summary>Package used by the normalized Gateway shipping API.</summary>
+public sealed class ShippingPackage
+{
+    /// <summary>Package weight.</summary>
+    public decimal Weight { get; init; }
+
+    /// <summary>Weight unit.</summary>
+    public string WeightUnit { get; init; } = "oz";
+
+    /// <summary>Package length.</summary>
+    public decimal? Length { get; init; }
+
+    /// <summary>Package width.</summary>
+    public decimal? Width { get; init; }
+
+    /// <summary>Package height.</summary>
+    public decimal? Height { get; init; }
+
+    /// <summary>Dimension unit.</summary>
+    public string DimensionUnit { get; init; } = "in";
+
+    /// <summary>Optional carrier-defined package name.</summary>
+    public string? PredefinedPackage { get; init; }
+}
+
 /// <summary>Shipping rate from a carrier. Matches the Gateway <c>ShippingRate</c> wire shape.</summary>
 public sealed class ShippingRate
 {

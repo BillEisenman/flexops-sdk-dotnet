@@ -24,8 +24,13 @@ namespace FlexOps.Sdk;
 /// client.WorkspaceId = "ws_abc123";
 ///
 /// var rates = await client.PostAsync&lt;ApiResponse&lt;ShippingRate[]&gt;&gt;(
-///     $"api/workspaces/{client.WorkspaceId}/shipping/rates",
-///     new { fromZip = "10001", toZip = "90210", weight = 16, weightUnit = "oz" });
+///     "api/shipping/rates",
+///     new RateShoppingRequest
+///     {
+///         Origin = new() { AddressLine1 = "123 Main St", City = "New York", StateProvince = "NY", PostalCode = "10001" },
+///         Destination = new() { AddressLine1 = "456 Oak Ave", City = "Los Angeles", StateProvince = "CA", PostalCode = "90210" },
+///         Package = new() { Weight = 16, WeightUnit = "oz" }
+///     });
 /// </code>
 /// </example>
 public sealed class FlexOpsClient : IDisposable

@@ -22,15 +22,16 @@ using var client = new FlexOpsTypedClient(
 );
 
 // Rate shop across all connected carriers
-var rates = await client.Shipping.GetRatesAsync(new
+var rateRequest = new RateShoppingRequest
 {
-    fromAddress = new { street1 = "123 Main St", city = "New York",   state = "NY", zip = "10001", country = "US" },
-    toAddress   = new { street1 = "456 Oak Ave", city = "Los Angeles", state = "CA", zip = "90210", country = "US" },
-    parcel      = new { weight  = 16, weightUnit = "oz" }
-});
+    Origin = new() { AddressLine1 = "123 Main St", City = "New York", StateProvince = "NY", PostalCode = "10001" },
+    Destination = new() { AddressLine1 = "456 Oak Ave", City = "Los Angeles", StateProvince = "CA", PostalCode = "90210" },
+    Package = new() { Weight = 16, WeightUnit = "oz" }
+};
+var rates = await client.Shipping.GetRatesAsync(rateRequest);
 
 // Cheapest rate only
-var cheapest = await client.Shipping.GetCheapestRateAsync(new { /* same shape */ });
+var cheapest = await client.Shipping.GetCheapestRateAsync(rateRequest);
 
 // Buy a label
 var label = await client.Shipping.CreateLabelAsync(new
@@ -135,13 +136,13 @@ If you'd rather verify the API directly before wiring the SDK:
 
 ```bash
 # Rate shop
-curl -X POST https://gateway.flexops.io/api/workspaces/ws_abc123/shipping/rates \
+curl -X POST https://gateway.flexops.io/api/shipping/rates \
   -H "X-API-Key: fxk_test_..." \
   -H "Content-Type: application/json" \
   -d '{
-    "fromAddress": {"street1": "123 Main St", "city": "New York",   "state": "NY", "zip": "10001", "country": "US"},
-    "toAddress":   {"street1": "456 Oak Ave", "city": "Los Angeles", "state": "CA", "zip": "90210", "country": "US"},
-    "parcel":      {"weight": 16, "weightUnit": "oz"}
+    "origin": {"addressLine1": "123 Main St", "city": "New York", "stateProvince": "NY", "postalCode": "10001", "countryCode": "US"},
+    "destination": {"addressLine1": "456 Oak Ave", "city": "Los Angeles", "stateProvince": "CA", "postalCode": "90210", "countryCode": "US"},
+    "package": {"weight": 16, "weightUnit": "oz"}
   }'
 
 # Buy a label
