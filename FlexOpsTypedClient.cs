@@ -25,7 +25,7 @@ namespace FlexOps.Sdk;
 ///     Destination = new() { AddressLine1 = "456 Oak Ave", City = "Los Angeles", StateProvince = "CA", PostalCode = "90210" },
 ///     Package = new() { Weight = 16, WeightUnit = "oz" }
 /// });
-/// var label = await client.Shipping.CreateLabelAsync(new { carrier = "USPS", service = "Priority" });
+/// // For live postage, use Shipping.PrepareLabelAsync and call PurchaseLabelAsync only after explicit approval.
 ///
 /// // Direct carrier operations
 /// var uspsLabel = await client.Carriers.Usps.CreateDomesticLabelAsync(fullUspsPayload);

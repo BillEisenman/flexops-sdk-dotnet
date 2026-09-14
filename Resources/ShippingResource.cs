@@ -6,6 +6,9 @@
 // Copyright (c) 2021-2026 by FlexOps, LLC. All rights reserved.
 // ***********************************************************************
 
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
 namespace FlexOps.Sdk.Resources;
 
 /// <summary>
@@ -75,9 +78,50 @@ public sealed class ShippingResource
     /// against an existing order (server-side ownership / status / ship-method validation +
     /// atomic postage settlement). Returns the raw label (HTTP 201).
     /// </summary>
+    /// <remarks>Live purchases require PrepareLabelAsync and explicit PurchaseLabelAsync approval. This legacy method never accepts a preview as a label.</remarks>
     public async Task<Label?> CreateLabelAsync(object request, CancellationToken ct = default)
     {
-        return await _client.PostAsync<Label>("api/shipping/labels", request, ct);
+        var response = await _client.PostAsync<JsonElement>("api/shipping/labels", request, ct);
+        if (response.TryGetProperty("status", out var status) && status.GetString() == "Preview")
+            throw new FlexOpsException("Approval required. Use PrepareLabelAsync, review the preview, then PurchaseLabelAsync.") { ErrorCode = "ApprovalRequired" };
+        return response.Deserialize<Label>(new JsonSerializerOptions(JsonSerializerDefaults.Web));
+    }
+
+    /// <summary>Prepare a bounded purchase without approving it. Retain the returned operation for every retry.</summary>
+    public async Task<LabelPurchaseApproval> PrepareLabelAsync(object request, decimal maximumPostageAmount, string idempotencyKey, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(idempotencyKey);
+        if (maximumPostageAmount <= 0 || maximumPostageAmount > 1000000 || decimal.Round(maximumPostageAmount, 2) != maximumPostageAmount)
+            throw new ArgumentOutOfRangeException(nameof(maximumPostageAmount));
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        var body = JsonSerializer.SerializeToNode(request, options) as JsonObject ?? throw new ArgumentException("A label request object is required.", nameof(request));
+        foreach (var key in body.Select(p => p.Key).Where(k => k.Equals("confirmationToken", StringComparison.OrdinalIgnoreCase) || k.Equals("maximumPostageAmount", StringComparison.OrdinalIgnoreCase)).ToArray())
+            body.Remove(key);
+        body["maximumPostageAmount"] = maximumPostageAmount;
+        var result = await _client.PostAsync<JsonElement>("api/shipping/labels", body, ct, idempotencyKey);
+        if (result.ValueKind == JsonValueKind.Object && result.TryGetProperty("isSandbox", out var sandbox) && sandbox.ValueKind == JsonValueKind.True)
+            return new LabelPurchaseApproval(idempotencyKey, body.ToJsonString(), result, result.Deserialize<Label>(options));
+        if (result.ValueKind != JsonValueKind.Object || !result.TryGetProperty("status", out var status) || status.ValueKind != JsonValueKind.String || status.GetString() != "Preview" ||
+            !result.TryGetProperty("confirmationToken", out var token) || token.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(token.GetString()) ||
+            !result.TryGetProperty("currency", out var currency) || currency.ValueKind != JsonValueKind.String || currency.GetString() != "USD" ||
+            !result.TryGetProperty("quotedPostageAmount", out var quote) || quote.ValueKind != JsonValueKind.Number || !quote.TryGetDecimal(out var amount) || amount <= 0 || amount > maximumPostageAmount ||
+            !result.TryGetProperty("maximumPostageAmount", out var limit) || limit.ValueKind != JsonValueKind.Number || !limit.TryGetDecimal(out var approvedMaximum) || approvedMaximum != maximumPostageAmount ||
+            !result.TryGetProperty("expiresAt", out var expiry) || expiry.ValueKind != JsonValueKind.String || !expiry.TryGetDateTimeOffset(out _))
+            throw new FlexOpsException("Gateway did not return a valid bounded preview.");
+        body["confirmationToken"] = token.GetString();
+        return new LabelPurchaseApproval(idempotencyKey, body.ToJsonString(), result, null);
+    }
+
+    /// <summary>Purchase only after explicit approval. Retry this same operation; never replace its key after an unknown outcome.</summary>
+    public async Task<Label?> PurchaseLabelAsync(LabelPurchaseApproval approval, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(approval);
+        if (approval.SandboxLabel is not null) return approval.SandboxLabel;
+        // Gateway decides expiry: a completed purchase remains replayable after its token expires.
+        var response = await _client.PostAsync<JsonElement>("api/shipping/labels", JsonNode.Parse(approval.RequestJson), ct, approval.IdempotencyKey);
+        if (!response.TryGetProperty("trackingNumber", out var tracking) || string.IsNullOrWhiteSpace(tracking.GetString()))
+            throw new FlexOpsException("Purchase outcome is unresolved. Retain this operation and reconcile before creating another label.") { ErrorCode = "OutcomeUnknown" };
+        return response.Deserialize<Label>(new JsonSerializerOptions(JsonSerializerDefaults.Web));
     }
 
     /// <summary>Cancel (void) a shipping label. <paramref name="carrierCode"/> is required.</summary>

@@ -33,21 +33,27 @@ var rates = await client.Shipping.GetRatesAsync(rateRequest);
 // Cheapest rate only
 var cheapest = await client.Shipping.GetCheapestRateAsync(rateRequest);
 
-// Buy a label
-var label = await client.Shipping.CreateLabelAsync(new
+// Prepare a bounded purchase. Retain this operation securely for all retries.
+var operation = await client.Shipping.PrepareLabelAsync(new
 {
-    carrier = "USPS",
-    service = "PRIORITY_MAIL",
-    fromAddress = new { /* ... */ },
-    toAddress   = new { /* ... */ },
-    parcel      = new { weight = 16, weightUnit = "oz" }
-});
+    origin = rateRequest.Origin, destination = rateRequest.Destination,
+    package = rateRequest.Package, carrierCode = "USPS", serviceCode = "PRIORITY"
+}, maximumPostageAmount: 10m, idempotencyKey: Guid.NewGuid().ToString());
+
+Label? label = operation.SandboxLabel;
+if (label is null)
+{
+    Console.WriteLine($"Postage: {operation.Preview.GetProperty("quotedPostageAmount")} USD; maximum: {operation.Preview.GetProperty("maximumPostageAmount")} USD; expires: {operation.Preview.GetProperty("expiresAt")}");
+    Console.WriteLine("Type approve to buy at the displayed maximum (later adjustments/fees excluded):");
+    if (Console.ReadLine() != "approve") return;
+    label = await client.Shipping.PurchaseLabelAsync(operation);
+}
 
 // Track
 var tracking = await client.Shipping.TrackAsync("9400111899223456789012");
 
 // Create a return
-var rma = await client.Returns.CreateRmaAsync(new { originalShipmentId = label!.Data!.Id, reason = "wrong_size" });
+var rma = await client.Returns.CreateRmaAsync(new { originalShipmentId = label!.LabelId, reason = "wrong_size" });
 ```
 
 ## Resources
@@ -176,3 +182,11 @@ curl https://gateway.flexops.io/api/workspaces/ws_abc123/shipping/track/94001118
 ## License
 
 MIT
+
+## Guarded label purchase contract
+
+These methods require a Gateway deployment with the bounded approval contract. Coordinate Gateway/client activation; an older Gateway does not provide the new preview guarantee. Prepare never automatically approves. Your application must display the quote and obtain approval before calling PurchaseLabelAsync. The maximum covers pre-dispatch postage, not later carrier adjustments or separate fees.
+
+Retain the operation's request JSON and idempotency key securely, with the original Gateway and credential identity. On a timeout or OutcomeUnknown, retry that operation only or reconcile with an operator. Do not regenerate keys. Completed purchases can replay after token expiry. Sandbox preparation returns SandboxLabel and does not create real postage. Legacy CreateLabelAsync and the USPS wrapper reject preview responses rather than misreporting a label; use the shared Shipping prepare/purchase methods for live purchases.
+
+Run `dotnet run --project tests/FlexOps.Sdk.ContractCheck --configuration Release` for the repository-owned rate and approval/replay checks.

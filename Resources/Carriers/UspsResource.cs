@@ -94,7 +94,7 @@ public sealed class UspsResource
     /// <param name="ct">Cancellation token.</param>
     public async Task<Label?> CreateDomesticLabelAsync(object request, CancellationToken ct = default)
     {
-        return await _client.PostAsync<Label>("api/shipping/labels", request, ct);
+        return await new ShippingResource(_client).CreateLabelAsync(request, ct);
     }
 
     /// <summary>Generate a domestic return shipping label.</summary>
