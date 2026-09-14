@@ -190,3 +190,9 @@ These methods require a Gateway deployment with the bounded approval contract. C
 Retain the operation's request JSON and idempotency key securely, with the original Gateway and credential identity. On a timeout or OutcomeUnknown, retry that operation only or reconcile with an operator. Do not regenerate keys. Completed purchases can replay after token expiry. Sandbox preparation returns SandboxLabel and does not create real postage. Legacy CreateLabelAsync and the USPS wrapper reject preview responses rather than misreporting a label; use the shared Shipping prepare/purchase methods for live purchases.
 
 Run `dotnet run --project tests/FlexOps.Sdk.ContractCheck --configuration Release` for the repository-owned rate and approval/replay checks.
+
+## Guarded label release compatibility
+
+This release requires a Gateway deployment with the bounded label preview/approval contract (Gateway PR #509 or later). Do not use its live label preparation against an older Gateway: older servers may purchase immediately. Upgrade the Gateway and affected callers together during a purchase maintenance window.
+
+Live label creation now requires a USD maximum, preview, explicit approval, and replay of the saved request with its original idempotency key. Never retry an uncertain purchase with a new key. Sandbox results do not certify production postage.
