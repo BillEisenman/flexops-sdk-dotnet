@@ -138,10 +138,36 @@ public sealed class FlexOpsClient : IDisposable
     }
 
     /// <summary>Sends a POST request with a JSON body and deserializes the response.</summary>
-    public async Task<TResponse?> PostAsync<TResponse>(string path, object? body = null, CancellationToken ct = default)
+    public Task<TResponse?> PostAsync<TResponse>(string path, object? body = null, CancellationToken ct = default)
+        => PostAsync<TResponse>(path, body, ct, null);
+
+    /// <summary>Sends a POST with a caller-owned idempotency key and preserves Gateway error codes.</summary>
+    public async Task<TResponse?> PostAsync<TResponse>(string path, object? body, CancellationToken ct, string? idempotencyKey)
     {
-        var response = await _http.PostAsJsonAsync(path, body, _jsonOptions, ct);
-        response.EnsureSuccessStatusCode();
+        if (idempotencyKey is null)
+        {
+            var legacyResponse = await _http.PostAsJsonAsync(path, body, _jsonOptions, ct);
+            legacyResponse.EnsureSuccessStatusCode();
+            return await legacyResponse.Content.ReadFromJsonAsync<TResponse>(_jsonOptions, ct);
+        }
+        using var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = JsonContent.Create(body, options: _jsonOptions) };
+        if (idempotencyKey is not null) request.Headers.Add("Idempotency-Key", idempotencyKey);
+        using var response = await _http.SendAsync(request, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = new FlexOpsException($"Gateway returned HTTP {(int)response.StatusCode}") { StatusCode = (int)response.StatusCode };
+            try
+            {
+                var details = await response.Content.ReadFromJsonAsync<JsonElement>(_jsonOptions, ct);
+                error = new FlexOpsException(details.TryGetProperty("message", out var message) ? message.GetString() ?? error.Message : error.Message)
+                {
+                    StatusCode = (int)response.StatusCode,
+                    ErrorCode = details.TryGetProperty("errorCode", out var code) || details.TryGetProperty("code", out code) ? code.GetString() : null
+                };
+            }
+            catch (JsonException) { }
+            throw error;
+        }
         return await response.Content.ReadFromJsonAsync<TResponse>(_jsonOptions, ct);
     }
 
