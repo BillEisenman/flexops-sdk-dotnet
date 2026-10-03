@@ -11,4 +11,7 @@
     <ProjectReference Include="..\..\FlexOps.Sdk.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="../../examples/international-label.json" Link="international-label.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

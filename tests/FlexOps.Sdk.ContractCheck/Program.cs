@@ -39,7 +39,24 @@ if (purchased?.TrackingNumber != "tracking-1" || labelHandler.Calls[1] != labelH
     labelHandler.Calls.Any(c => c.Key != "stable-label-key") || labelHandler.Calls[1].Body.Contains("UPS")) throw new Exception("Purchase snapshot/replay failed.");
 Console.WriteLine("Rate and bounded-label contract checks passed.");
 
-sealed class ApprovalHandler : HttpMessageHandler
+
+// Typed international customs survives serialization and the immutable approval snapshot.
+var internationalJson = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "international-label.json"));
+var serializerOptions = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web);
+var internationalRequest = System.Text.Json.JsonSerializer.Deserialize<LabelRequest>(internationalJson, serializerOptions)!;
+var internationalHandler = new ApprovalHandler(50);
+using var internationalHttp = new HttpClient(internationalHandler) { BaseAddress = new Uri("https://example.test/") };
+using var internationalClient = new FlexOpsTypedClient("https://example.test", httpClient: internationalHttp);
+var internationalApproval = await internationalClient.Shipping.PrepareLabelAsync(internationalRequest, 50, "international-1");
+using var sentInternational = System.Text.Json.JsonDocument.Parse(internationalHandler.Calls[0].Body);
+var customs = sentInternational.RootElement.GetProperty("customsDeclaration");
+if (internationalHandler.Calls.Count != 1 || customs.GetProperty("aesItn").GetString() != "NOEEI 30.37(a)"
+    || customs.GetProperty("items")[0].GetProperty("value").GetDecimal() != 12.5m
+    || sentInternational.RootElement.GetProperty("orderId").GetInt64() != 42)
+    throw new Exception("International customs contract failed.");
+Console.WriteLine("International typed approval contract passed.");
+
+sealed class ApprovalHandler(decimal maximum = 10) : HttpMessageHandler
 {
     public List<(string Key, string Body)> Calls { get; } = [];
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
@@ -48,6 +65,7 @@ sealed class ApprovalHandler : HttpMessageHandler
         string body = Calls.Count == 1 ? """{"status":"Preview","quotedPostageAmount":8.5,"maximumPostageAmount":10,"currency":"USD","expiresAt":"2099-01-01T00:00:00Z","confirmationToken":"signed-preview"}"""
             : Calls.Count == 2 ? """{"errorCode":"OutcomeUnknown","message":"Carrier outcome requires reconciliation"}"""
             : """{"trackingNumber":"tracking-1","rate":8.5}""";
+        body = body.Replace("\"maximumPostageAmount\":10", "\"maximumPostageAmount\":" + maximum.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal);
         return new HttpResponseMessage(Calls.Count == 2 ? HttpStatusCode.Conflict : HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
     }
 }

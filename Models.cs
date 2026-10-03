@@ -57,6 +57,14 @@ public sealed class RateShoppingRequest
 
     /// <summary>Optional carrier-code filter.</summary>
     public List<string>? Carriers { get; init; }
+    /// <summary>Optional service selection.</summary>
+    public List<string>? ServiceLevels { get; init; }
+    /// <summary>Explicit international mailing date.</summary>
+    public DateTime? ShipDate { get; init; }
+    /// <summary>Total declared USD value.</summary>
+    public decimal? DeclaredValue { get; init; }
+    /// <summary>Pricing currency.</summary>
+    public string Currency { get; init; } = "USD";
 }
 
 /// <summary>Address used by the normalized Gateway shipping API.</summary>
@@ -109,6 +117,12 @@ public sealed class ShippingPackage
 /// <summary>Shipping rate from a carrier. Matches the Gateway <c>ShippingRate</c> wire shape.</summary>
 public sealed class ShippingRate
 {
+    /// <summary>Exact USPS parcel product.</summary>
+    public string? RateIndicator { get; set; }
+    /// <summary>Mail class priced by USPS.</summary>
+    public string? UspsMailClass { get; set; }
+    /// <summary>Whether the rate is international.</summary>
+    public bool IsInternational { get; set; }
     /// <summary>Carrier code (USPS, UPS, FEDEX, DHL).</summary>
     public string CarrierCode { get; set; } = string.Empty;
 
@@ -268,4 +282,107 @@ public sealed class WebhookSubscription
 
     /// <summary>Whether the subscription is active.</summary>
     public bool IsActive { get; set; }
+}
+
+/// <summary>Normalized label input for preview and explicit purchase. International access is server gated.</summary>
+public sealed class LabelRequest
+{
+    /// <summary>Origin.</summary>
+    public required ShippingAddress Origin { get; init; }
+
+    /// <summary>Destination.</summary>
+    public required ShippingAddress Destination { get; init; }
+
+    /// <summary>Package.</summary>
+    public required ShippingPackage Package { get; init; }
+
+    /// <summary>CarrierCode.</summary>
+    public required string CarrierCode { get; init; }
+
+    /// <summary>ServiceCode.</summary>
+    public required string ServiceCode { get; init; }
+
+    /// <summary>OrderId.</summary>
+    public long? OrderId { get; init; }
+
+    /// <summary>LabelFormat.</summary>
+    public string LabelFormat { get; init; } = "PDF";
+
+    /// <summary>ShipDate.</summary>
+    public DateTime? ShipDate { get; init; }
+
+    /// <summary>DeclaredValue.</summary>
+    public decimal? DeclaredValue { get; init; }
+
+    /// <summary>MaximumPostageAmount.</summary>
+    public decimal? MaximumPostageAmount { get; init; }
+
+    /// <summary>ConfirmationToken.</summary>
+    public string? ConfirmationToken { get; init; }
+
+    /// <summary>CustomsDeclaration.</summary>
+    public CustomsDeclaration? CustomsDeclaration { get; init; }
+
+    /// <summary>RateIndicator.</summary>
+    public string? RateIndicator { get; init; }
+}
+/// <summary>USPS customs declaration with per-unit item quantities and values.</summary>
+public sealed class CustomsDeclaration
+{
+    /// <summary>ContentsType.</summary>
+    public string ContentsType { get; init; } = "merchandise";
+
+    /// <summary>ContentsExplanation.</summary>
+    public string? ContentsExplanation { get; init; }
+
+    /// <summary>NonDeliveryOption.</summary>
+    public string NonDeliveryOption { get; init; } = "return";
+
+    /// <summary>Currency.</summary>
+    public string Currency { get; init; } = "USD";
+
+    /// <summary>DeclaredValue.</summary>
+    public decimal DeclaredValue { get; init; }
+
+    /// <summary>AesItn.</summary>
+    public required string AesItn { get; init; }
+
+    /// <summary>InvoiceNumber.</summary>
+    public string? InvoiceNumber { get; init; }
+
+    /// <summary>LicenseNumber.</summary>
+    public string? LicenseNumber { get; init; }
+
+    /// <summary>CertificateNumber.</summary>
+    public string? CertificateNumber { get; init; }
+
+    /// <summary>RestrictionType.</summary>
+    public string? RestrictionType { get; init; }
+
+    /// <summary>RestrictionComments.</summary>
+    public string? RestrictionComments { get; init; }
+
+    /// <summary>Items.</summary>
+    public List<CustomsItem> Items { get; init; } = [];
+}
+/// <summary>One customs line. Value and WeightOz are per unit.</summary>
+public sealed class CustomsItem
+{
+    /// <summary>Description.</summary>
+    public required string Description { get; init; }
+
+    /// <summary>Quantity.</summary>
+    public int Quantity { get; init; }
+
+    /// <summary>Value.</summary>
+    public decimal Value { get; init; }
+
+    /// <summary>WeightOz.</summary>
+    public decimal WeightOz { get; init; }
+
+    /// <summary>HsCode.</summary>
+    public string? HsCode { get; init; }
+
+    /// <summary>OriginCountry.</summary>
+    public required string OriginCountry { get; init; }
 }
