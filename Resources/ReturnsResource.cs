@@ -56,7 +56,10 @@ public sealed class ReturnsResource
 
     /// <summary>Generate a return label for an approved RMA.</summary>
     /// <remarks>Sends an empty JSON object: the Gateway binds a required <c>GenerateReturnLabelRequest</c>
-    /// body (its fields have defaults) and refuses a <c>null</c> body with 400.</remarks>
+    /// body and refuses a <c>null</c> body with 400. An empty object carries no package, so this only works
+    /// for a workspace with a default shipping preset; otherwise the Gateway answers 400
+    /// <c>PackageMeasurementsRequired</c>. Prefer <see cref="GenerateLabelAsync(string, ReturnLabelRequest, CancellationToken)"/>
+    /// and send the weight and size.</remarks>
     public async Task<ApiResponse<object>?> GenerateLabelAsync(string returnId, CancellationToken ct = default)
     {
         return await _client.PostAsync<ApiResponse<object>>(_client.WsPath($"returns/{returnId}/label"), new { }, ct);
@@ -69,6 +72,17 @@ public sealed class ReturnsResource
     public async Task<ApiResponse<object>?> GenerateLabelAsync(string returnId, HazmatClassification hazmatClassification, CancellationToken ct = default)
     {
         return await _client.PostAsync<ApiResponse<object>>(_client.WsPath($"returns/{returnId}/label"), new { hazmatClassification }, ct);
+    }
+
+    /// <summary>Generate a return label for an approved RMA with the package weight and size.</summary>
+    /// <param name="returnId">The RMA number.</param>
+    /// <param name="request">The package (<see cref="ReturnLabelRequest.WeightOz"/>, <see cref="ReturnLabelRequest.LengthIn"/>,
+    /// <see cref="ReturnLabelRequest.WidthIn"/>, <see cref="ReturnLabelRequest.HeightIn"/>) and options.</param>
+    /// <param name="ct">Cancellation token.</param>
+    public async Task<ApiResponse<object>?> GenerateLabelAsync(string returnId, ReturnLabelRequest request, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return await _client.PostAsync<ApiResponse<object>>(_client.WsPath($"returns/{returnId}/label"), request, ct);
     }
 
     /// <summary>Mark items as received.</summary>
