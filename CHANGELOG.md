@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `HazmatClassification` and an optional `HazmatClassification` on `LabelRequest` and `RateShoppingRequest`. It is sent only when set; the SDK never defaults it. Labels without an `OrderId` must declare it (`HazmatClassification.None` for an ordinary parcel).
 - `Returns.GenerateLabelAsync(returnId, hazmatClassification)` sends a declared HAZMAT class with a return label.
+- `Returns.GenerateLabelAsync(returnId, ReturnLabelRequest)` sends the package weight and size (`WeightOz`, `LengthIn`, `WidthIn`, `HeightIn`) with a return label, plus `CarrierCode`, `ServiceType`, `PaymentConfirmed` and `HazmatClassification`. The Gateway needs the package: a workspace with no default shipping preset gets a 400 (`PackageMeasurementsRequired`) naming the missing fields when the other overloads are used (Gateway #672).
 
 ### Fixed
 - `Returns.GenerateLabelAsync(returnId)` sends `{}` instead of a JSON `null` body, which the Gateway return-label route (`[FromBody] GenerateReturnLabelRequest`) refused with 400.

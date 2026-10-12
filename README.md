@@ -56,6 +56,11 @@ var tracking = await client.Shipping.TrackAsync("9400111899223456789012");
 
 // Create a return
 var rma = await client.Returns.CreateRmaAsync(new { originalShipmentId = label!.LabelId, reason = "wrong_size" });
+
+// Buy the return label. Send the package weight and size: anything left out comes from the
+// workspace's default shipping preset, and with no preset the API answers 400 PackageMeasurementsRequired.
+var returnLabel = await client.Returns.GenerateLabelAsync("RMA-1001",
+    new ReturnLabelRequest { WeightOz = 16, LengthIn = 10, WidthIn = 8, HeightIn = 4 });
 ```
 
 ## Resources

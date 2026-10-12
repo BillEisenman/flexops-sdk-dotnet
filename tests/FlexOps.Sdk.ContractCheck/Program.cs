@@ -97,6 +97,23 @@ if (hazmatHandler.Calls[7].Body.Trim() != "{}")
     throw new Exception($"Return label without a class must send an empty object, sent: {hazmatHandler.Calls[7].Body}");
 Console.WriteLine("HAZMAT declaration contract passed.");
 
+// Return label package (FlexOpsGateway#672): weight and size reach the wire as the Gateway's camelCase fields.
+await hazmatClient.Returns.GenerateLabelAsync("RMA-3", new ReturnLabelRequest
+{
+    WeightOz = 16m, LengthIn = 10m, WidthIn = 8m, HeightIn = 4m, HazmatClassification = HazmatClassification.None
+});
+if (hazmatHandler.Calls[^1].Path != "/api/workspaces/ws_1/returns/RMA-3/label")
+    throw new Exception("Return-label package overload posted to the wrong route.");
+using (var packageBody = System.Text.Json.JsonDocument.Parse(hazmatHandler.Calls[^1].Body))
+{
+    var root = packageBody.RootElement;
+    if (root.GetProperty("weightOz").GetDecimal() != 16m || root.GetProperty("lengthIn").GetDecimal() != 10m ||
+        root.GetProperty("widthIn").GetDecimal() != 8m || root.GetProperty("heightIn").GetDecimal() != 4m ||
+        root.GetProperty("hazmatClassification").GetInt32() != 0 || root.TryGetProperty("carrierCode", out _))
+        throw new Exception($"Return label package contract failed: sent {hazmatHandler.Calls[^1].Body}");
+}
+Console.WriteLine("Return label package contract passed.");
+
 // Address validation sends the Gateway AddressValidationRequest: { "address": { ... } }.
 await hazmatClient.Shipping.ValidateAddressAsync(Address("123 Main St"));
 using (var validation = System.Text.Json.JsonDocument.Parse(hazmatHandler.Calls[^1].Body))

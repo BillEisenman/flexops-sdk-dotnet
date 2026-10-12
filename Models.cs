@@ -152,6 +152,45 @@ public sealed class ShippingPackage
     public string? PredefinedPackage { get; init; }
 }
 
+/// <summary>
+/// Body of <c>POST /api/workspaces/{workspaceId}/returns/{rmaNumber}/label</c>.
+/// </summary>
+/// <remarks>
+/// The carrier needs the package weight and all three dimensions. Set <see cref="WeightOz"/>,
+/// <see cref="LengthIn"/>, <see cref="WidthIn"/> and <see cref="HeightIn"/>; any you leave out come
+/// from the workspace's default shipping preset. With no preset the Gateway refuses the call with
+/// a 400 (code <c>PackageMeasurementsRequired</c>) that names the missing fields.
+/// </remarks>
+public sealed class ReturnLabelRequest
+{
+    /// <summary>Carrier for the return label. Defaults to <c>usps</c> on the Gateway (the only carrier supported).</summary>
+    public string? CarrierCode { get; init; }
+
+    /// <summary>Carrier service for the return label.</summary>
+    public string? ServiceType { get; init; }
+
+    /// <summary>Package weight in ounces.</summary>
+    public decimal? WeightOz { get; init; }
+
+    /// <summary>Package length in inches.</summary>
+    public decimal? LengthIn { get; init; }
+
+    /// <summary>Package width in inches.</summary>
+    public decimal? WidthIn { get; init; }
+
+    /// <summary>Package height in inches.</summary>
+    public decimal? HeightIn { get; init; }
+
+    /// <summary>Set when the workspace return-cost policy is CustomerPays and the customer has paid.</summary>
+    public bool? PaymentConfirmed { get; init; }
+
+    /// <summary>
+    /// Declared HAZMAT class. Leave <c>null</c> for no answer, or <see cref="HazmatClassification.None"/>.
+    /// Return labels cannot carry HAZMAT yet, so any other class is refused (400 <c>HazmatNotSupported</c>).
+    /// </summary>
+    public HazmatClassification? HazmatClassification { get; init; }
+}
+
 /// <summary>Shipping rate from a carrier. Matches the Gateway <c>ShippingRate</c> wire shape.</summary>
 public sealed class ShippingRate
 {
