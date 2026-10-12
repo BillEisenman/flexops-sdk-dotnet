@@ -55,9 +55,11 @@ public sealed class ReturnsResource
     }
 
     /// <summary>Generate a return label for an approved RMA.</summary>
+    /// <remarks>Sends an empty JSON object: the Gateway binds a required <c>GenerateReturnLabelRequest</c>
+    /// body (its fields have defaults) and refuses a <c>null</c> body with 400.</remarks>
     public async Task<ApiResponse<object>?> GenerateLabelAsync(string returnId, CancellationToken ct = default)
     {
-        return await _client.PostAsync<ApiResponse<object>>(_client.WsPath($"returns/{returnId}/label"), null, ct);
+        return await _client.PostAsync<ApiResponse<object>>(_client.WsPath($"returns/{returnId}/label"), new { }, ct);
     }
 
     /// <summary>Generate a return label for an approved RMA with a declared HAZMAT class.</summary>

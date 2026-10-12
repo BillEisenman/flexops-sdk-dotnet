@@ -92,6 +92,9 @@ for (var call = 0; call < expectedHazmat.Length; call++)
 }
 if (hazmatHandler.Calls[6].Path != "/api/workspaces/ws_1/returns/RMA-1/label")
     throw new Exception("Return-label HAZMAT overload posted to the wrong route.");
+// The Gateway binds [FromBody] GenerateReturnLabelRequest; a JSON null body is refused with 400.
+if (hazmatHandler.Calls[7].Body.Trim() != "{}")
+    throw new Exception($"Return label without a class must send an empty object, sent: {hazmatHandler.Calls[7].Body}");
 Console.WriteLine("HAZMAT declaration contract passed.");
 
 // Address validation sends the Gateway AddressValidationRequest: { "address": { ... } }.
