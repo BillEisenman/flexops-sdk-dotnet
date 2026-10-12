@@ -146,6 +146,17 @@ public sealed class ShippingResource
     // -----------------------------------------------------------------------
 
     /// <summary>Validate and correct a shipping address.</summary>
+    /// <remarks>Sends the Gateway <c>AddressValidationRequest</c>: <c>{ "address": { ... } }</c>.</remarks>
+    public async Task<object?> ValidateAddressAsync(ShippingAddress address, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(address);
+        return await _client.PostAsync<object>("api/shipping/addresses/validate", new { address }, ct);
+    }
+
+    /// <summary>Validate and correct a shipping address using an untyped request payload.</summary>
+    /// <remarks>The payload is sent as given, so it must already be the Gateway
+    /// <c>AddressValidationRequest</c> (<c>new { address = ... }</c>). Prefer the
+    /// <see cref="ShippingAddress"/> overload, which wraps the address for you.</remarks>
     public async Task<object?> ValidateAddressAsync(object address, CancellationToken ct = default)
     {
         return await _client.PostAsync<object>("api/shipping/addresses/validate", address, ct);
@@ -156,6 +167,8 @@ public sealed class ShippingResource
     // -----------------------------------------------------------------------
 
     /// <summary>Create labels in batch.</summary>
+    /// <remarks>The payload is sent as given. Set <c>hazmatClassification</c> (a
+    /// <see cref="HazmatClassification"/> number) on an item only when you have a declaration; the SDK never adds one.</remarks>
     public async Task<ApiResponse<object>?> CreateBatchAsync(object request, CancellationToken ct = default)
     {
         return await _client.PostAsync<ApiResponse<object>>(_client.WsPath("labels/batch"), request, ct);

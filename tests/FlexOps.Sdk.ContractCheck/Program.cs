@@ -56,6 +56,70 @@ if (internationalHandler.Calls.Count != 1 || customs.GetProperty("aesItn").GetSt
     throw new Exception("International customs contract failed.");
 Console.WriteLine("International typed approval contract passed.");
 
+// HAZMAT declaration: sent only when the caller sets it (0 = None is an answer), never defaulted.
+var hazmatHandler = new RecordingHandler();
+using var hazmatHttp = new HttpClient(hazmatHandler) { BaseAddress = new Uri("https://example.test/") };
+using var hazmatClient = new FlexOpsTypedClient("https://example.test", apiKey: "test-key", workspaceId: "ws_1", httpClient: hazmatHttp);
+ShippingAddress Address(string line) => new() { AddressLine1 = line, City = "New York", StateProvince = "NY", PostalCode = "10001" };
+LabelRequest HazmatLabel(HazmatClassification? hazmat) => new()
+{
+    Origin = Address("1 Main St"), Destination = Address("2 Main St"), Package = new() { Weight = 16 },
+    CarrierCode = "USPS", ServiceCode = "PRIORITY", HazmatClassification = hazmat
+};
+RateShoppingRequest HazmatRate(HazmatClassification? hazmat) => new()
+{
+    Origin = Address("1 Main St"), Destination = Address("2 Main St"), Package = new() { Weight = 16 }, HazmatClassification = hazmat
+};
+await hazmatClient.Shipping.PrepareLabelAsync(HazmatLabel(null), 10m, "hazmat-unset");
+await hazmatClient.Shipping.PrepareLabelAsync(HazmatLabel(HazmatClassification.None), 10m, "hazmat-none");
+await hazmatClient.Shipping.CreateLabelAsync(HazmatLabel(HazmatClassification.LimitedQuantity));
+await hazmatClient.Shipping.CreateLabelAsync(HazmatLabel(null));
+await hazmatClient.Shipping.GetRatesAsync(HazmatRate(HazmatClassification.None));
+await hazmatClient.Shipping.GetRatesAsync(HazmatRate(null));
+await hazmatClient.Returns.GenerateLabelAsync("RMA-1", HazmatClassification.None);
+await hazmatClient.Returns.GenerateLabelAsync("RMA-2");
+int? SentHazmat(int call)
+{
+    using var sent = System.Text.Json.JsonDocument.Parse(hazmatHandler.Calls[call].Body);
+    return sent.RootElement.ValueKind == System.Text.Json.JsonValueKind.Object && sent.RootElement.TryGetProperty("hazmatClassification", out var value)
+        ? value.GetInt32() : null;
+}
+int?[] expectedHazmat = [null, 0, 1, null, 0, null, 0, null];
+for (var call = 0; call < expectedHazmat.Length; call++)
+{
+    if (SentHazmat(call) != expectedHazmat[call])
+        throw new Exception($"HAZMAT contract failed on call {call} ({hazmatHandler.Calls[call].Path}): sent {hazmatHandler.Calls[call].Body}");
+}
+if (hazmatHandler.Calls[6].Path != "/api/workspaces/ws_1/returns/RMA-1/label")
+    throw new Exception("Return-label HAZMAT overload posted to the wrong route.");
+// The Gateway binds [FromBody] GenerateReturnLabelRequest; a JSON null body is refused with 400.
+if (hazmatHandler.Calls[7].Body.Trim() != "{}")
+    throw new Exception($"Return label without a class must send an empty object, sent: {hazmatHandler.Calls[7].Body}");
+Console.WriteLine("HAZMAT declaration contract passed.");
+
+// Address validation sends the Gateway AddressValidationRequest: { "address": { ... } }.
+await hazmatClient.Shipping.ValidateAddressAsync(Address("123 Main St"));
+using (var validation = System.Text.Json.JsonDocument.Parse(hazmatHandler.Calls[^1].Body))
+{
+    if (hazmatHandler.Calls[^1].Path != "/api/shipping/addresses/validate" ||
+        !validation.RootElement.TryGetProperty("address", out var wrapped) ||
+        wrapped.GetProperty("addressLine1").GetString() != "123 Main St" ||
+        wrapped.GetProperty("stateProvince").GetString() != "NY")
+        throw new Exception($"Address validation contract failed: sent {hazmatHandler.Calls[^1].Body}");
+}
+Console.WriteLine("Address validation contract passed.");
+
+sealed class RecordingHandler : HttpMessageHandler
+{
+    public List<(string Path, string Body)> Calls { get; } = [];
+    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+    {
+        Calls.Add((request.RequestUri!.AbsolutePath, request.Content is null ? "" : await request.Content.ReadAsStringAsync(ct)));
+        const string body = """{"success":true,"isSandbox":true,"labelId":"sandbox-1","trackingNumber":"sandbox-1","rates":[],"currency":"USD","isValid":true}""";
+        return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
+    }
+}
+
 sealed class ApprovalHandler(decimal maximum = 10) : HttpMessageHandler
 {
     public List<(string Key, string Body)> Calls { get; } = [];

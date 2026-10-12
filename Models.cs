@@ -6,6 +6,8 @@
 // Copyright (c) 2021-2026 by FlexOps, LLC. All rights reserved.
 // ***********************************************************************
 
+using System.Text.Json.Serialization;
+
 namespace FlexOps.Sdk;
 
 /// <summary>Standard API response wrapper.</summary>
@@ -65,6 +67,42 @@ public sealed class RateShoppingRequest
     public decimal? DeclaredValue { get; init; }
     /// <summary>Pricing currency.</summary>
     public string Currency { get; init; } = "USD";
+
+    /// <summary>
+    /// Declared USPS HAZMAT class, so quotes match what the label route will accept.
+    /// Sent only when set; the SDK never fills it in.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public HazmatClassification? HazmatClassification { get; init; }
+}
+
+/// <summary>
+/// USPS HAZMAT classification, sent as the Gateway <c>HazmatClassification</c> number.
+/// There is no default: leave the property <c>null</c> when you have no answer, or send
+/// <see cref="None"/> (0) to declare that the parcel holds no dangerous goods.
+/// </summary>
+public enum HazmatClassification
+{
+    /// <summary>Not hazardous.</summary>
+    None = 0,
+
+    /// <summary>Limited Quantity (consumer-commodity small quantities). USPS Ground Advantage only.</summary>
+    LimitedQuantity = 1,
+
+    /// <summary>Lithium batteries contained in equipment.</summary>
+    LithiumBatteryContainedInEquipment = 2,
+
+    /// <summary>Lithium batteries packed with equipment.</summary>
+    LithiumBatteryPackedWithEquipment = 3,
+
+    /// <summary>Stand-alone lithium batteries.</summary>
+    LithiumBatteryStandalone = 4,
+
+    /// <summary>Other restricted material.</summary>
+    OtherRestricted = 5,
+
+    /// <summary>Lithium batteries in a used, damaged or defective device.</summary>
+    LithiumBatteryUsedDevice = 6
 }
 
 /// <summary>Address used by the normalized Gateway shipping API.</summary>
@@ -325,6 +363,14 @@ public sealed class LabelRequest
 
     /// <summary>RateIndicator.</summary>
     public string? RateIndicator { get; init; }
+
+    /// <summary>
+    /// Declared USPS HAZMAT class. A label without an <see cref="OrderId"/> must declare one:
+    /// send <see cref="Sdk.HazmatClassification.None"/> for an ordinary parcel. Sent only when set;
+    /// the SDK never fills it in.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public HazmatClassification? HazmatClassification { get; init; }
 }
 /// <summary>USPS customs declaration with per-unit item quantities and values.</summary>
 public sealed class CustomsDeclaration
