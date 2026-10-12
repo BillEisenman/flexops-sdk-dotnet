@@ -37,7 +37,9 @@ var cheapest = await client.Shipping.GetCheapestRateAsync(rateRequest);
 var operation = await client.Shipping.PrepareLabelAsync(new
 {
     origin = rateRequest.Origin, destination = rateRequest.Destination,
-    package = rateRequest.Package, carrierCode = "USPS", serviceCode = "PRIORITY"
+    package = rateRequest.Package, carrierCode = "USPS", serviceCode = "PRIORITY",
+    // Required without an orderId. The SDK never fills it in; None (0) = not hazardous.
+    hazmatClassification = HazmatClassification.None
 }, maximumPostageAmount: 10m, idempotencyKey: Guid.NewGuid().ToString());
 
 Label? label = operation.SandboxLabel;
@@ -151,20 +153,21 @@ curl -X POST https://gateway.flexops.io/api/shipping/rates \
     "package": {"weight": 16, "weightUnit": "oz"}
   }'
 
-# Buy a label
-curl -X POST https://gateway.flexops.io/api/workspaces/ws_abc123/shipping/labels \
+# Buy a label (hazmatClassification 0 = not hazardous; required when there is no orderId)
+curl -X POST https://gateway.flexops.io/api/shipping/labels \
   -H "X-API-Key: fxk_test_..." \
   -H "Content-Type: application/json" \
   -d '{
-    "carrier":  "USPS",
-    "service":  "PRIORITY_MAIL",
-    "fromAddress": {"name": "Warehouse", "street1": "123 Main St", "city": "New York",   "state": "NY", "zip": "10001", "country": "US"},
-    "toAddress":   {"name": "Customer",  "street1": "456 Oak Ave", "city": "Los Angeles", "state": "CA", "zip": "90210", "country": "US"},
-    "parcel":   {"weight": 16, "weightUnit": "oz"}
+    "carrierCode": "USPS",
+    "serviceCode": "PRIORITY",
+    "origin":      {"name": "Warehouse", "addressLine1": "123 Main St", "city": "New York",    "stateProvince": "NY", "postalCode": "10001", "countryCode": "US"},
+    "destination": {"name": "Customer",  "addressLine1": "456 Oak Ave", "city": "Los Angeles", "stateProvince": "CA", "postalCode": "90210", "countryCode": "US"},
+    "package":     {"weight": 16, "weightUnit": "oz"},
+    "hazmatClassification": 0
   }'
 
 # Track
-curl https://gateway.flexops.io/api/workspaces/ws_abc123/shipping/track/9400111899223456789012 \
+curl https://gateway.flexops.io/api/shipping/track/9400111899223456789012 \
   -H "X-API-Key: fxk_test_..."
 ```
 

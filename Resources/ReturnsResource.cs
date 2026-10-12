@@ -60,6 +60,15 @@ public sealed class ReturnsResource
         return await _client.PostAsync<ApiResponse<object>>(_client.WsPath($"returns/{returnId}/label"), null, ct);
     }
 
+    /// <summary>Generate a return label for an approved RMA with a declared HAZMAT class.</summary>
+    /// <param name="returnId">The RMA number.</param>
+    /// <param name="hazmatClassification">What the parcel holds; <see cref="HazmatClassification.None"/> for no dangerous goods.</param>
+    /// <param name="ct">Cancellation token.</param>
+    public async Task<ApiResponse<object>?> GenerateLabelAsync(string returnId, HazmatClassification hazmatClassification, CancellationToken ct = default)
+    {
+        return await _client.PostAsync<ApiResponse<object>>(_client.WsPath($"returns/{returnId}/label"), new { hazmatClassification }, ct);
+    }
+
     /// <summary>Mark items as received.</summary>
     public async Task<ApiResponse<object>?> MarkReceivedAsync(string returnId, object items, CancellationToken ct = default)
     {

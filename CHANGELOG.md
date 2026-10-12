@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `HazmatClassification` and an optional `HazmatClassification` on `LabelRequest` and `RateShoppingRequest`. It is sent only when set; the SDK never defaults it. Labels without an `OrderId` must declare it (`HazmatClassification.None` for an ordinary parcel).
+- `Returns.GenerateLabelAsync(returnId, hazmatClassification)` sends a declared HAZMAT class with a return label.
+
+### Fixed
+- `Shipping.ValidateAddressAsync(ShippingAddress)` sends the Gateway `{ "address": { ... } }` request. The untyped overload still sends its payload as given.
+- README curl quickstart: the label example uses the Gateway `LabelRequest` shape (`carrierCode`, `serviceCode`, `origin`, `destination`, `package`) and the `api/shipping/labels` and `api/shipping/track` routes.
+
 ### Changed
 - README: added a curl quickstart section so developers can verify the FlexOps API before committing to the SDK.
 - Retargeted `RepositoryUrl` in the csproj to `github.com/BillEisenman/flexops-sdk-dotnet` (organization migration from `FlexOps/`).
