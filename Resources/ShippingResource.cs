@@ -167,8 +167,8 @@ public sealed class ShippingResource
     // -----------------------------------------------------------------------
 
     /// <summary>Create labels in batch.</summary>
-    /// <remarks>The payload is sent as given. Include <c>hazmatClassification</c> (a
-    /// <see cref="HazmatClassification"/> number) only when you have a declaration; the SDK never adds one.</remarks>
+    /// <remarks>The payload is sent as given. Set <c>hazmatClassification</c> (a
+    /// <see cref="HazmatClassification"/> number) on an item only when you have a declaration; the SDK never adds one.</remarks>
     public async Task<ApiResponse<object>?> CreateBatchAsync(object request, CancellationToken ct = default)
     {
         return await _client.PostAsync<ApiResponse<object>>(_client.WsPath("labels/batch"), request, ct);
