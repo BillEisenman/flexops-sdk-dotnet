@@ -90,6 +90,43 @@ The typed client exposes:
 | `client.EmailTemplates` | Branded email templates |
 | `client.Reports` | Scheduled reports |
 
+## Webhook subscriptions
+
+```csharp
+// Leave Events null to receive every event.
+var webhook = await client.Webhooks.CreateAsync(new CreateWebhookRequest
+{
+    Url = "https://your-app.com/webhooks/flexops",
+    Events = [WebhookEventType.LabelCreated, WebhookEventType.LabelCanceled, WebhookEventType.BatchCompleted],
+});
+var signingSecret = webhook!.Data!.Secret; // returned only on create; store it
+
+// Change the events or pause the subscription; unset properties are left as they are.
+await client.Webhooks.UpdateAsync(webhook.Data.Id, new UpdateWebhookRequest
+{
+    Events = [WebhookEventType.LabelCreated],
+    Status = "Paused",
+});
+```
+
+The SDK sends `Events` as the Gateway's comma-separated `eventTypes` (`"LabelCreated,LabelCanceled,BatchCompleted"`).
+A subscription's `EventTypes` comes back in the same form, or `*` for every event. FlexOps sends these events,
+named exactly as below. Names are PascalCase and matched exactly, so a name like `label.created` would never
+match; `CreateAsync` and `UpdateAsync` throw `ArgumentException` for an empty list or an undefined value
+without calling the API.
+
+| Event | Sent when |
+| --- | --- |
+| `LabelCreated` | A live label is purchased (sandbox labels send nothing) |
+| `LabelCanceled` | A live label is voided |
+| `BatchCompleted` | A batch label job finishes |
+| `TrackingUpdated` | A USPS tracking scan arrives (USPS push-tracking pilot workspaces only) |
+| `TrackingDelivered` | A USPS package is delivered (USPS push-tracking pilot workspaces only) |
+
+The `CreateAsync(object)` and `UpdateAsync(string, object)` overloads send their payload as given. Use
+`eventTypes` (one comma-separated string, no spaces) there; the Gateway ignores an `events` field and
+subscribes to every event.
+
 ## Webhook verification
 
 Each delivery is a `POST` whose body is the event data itself (there is no `{ "type", "data" }`

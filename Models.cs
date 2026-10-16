@@ -345,7 +345,33 @@ public sealed class WalletBalance
     public bool AutoReloadEnabled { get; set; }
 }
 
-/// <summary>Webhook subscription.</summary>
+/// <summary>
+/// Events FlexOps sends in the <c>X-FlexOps-Event</c> header and matches subscriptions against.
+/// </summary>
+/// <remarks>
+/// The wire name is the member name (<c>ToString()</c>), in PascalCase, and it is matched exactly: a dotted
+/// name such as <c>label.created</c> matches nothing. <see cref="TrackingUpdated"/> and
+/// <see cref="TrackingDelivered"/> are sent only to workspaces in the USPS push-tracking pilot.
+/// </remarks>
+public enum WebhookEventType
+{
+    /// <summary>A live label was purchased. Sandbox labels send nothing.</summary>
+    LabelCreated,
+
+    /// <summary>A live label was voided.</summary>
+    LabelCanceled,
+
+    /// <summary>A batch label job finished.</summary>
+    BatchCompleted,
+
+    /// <summary>A USPS tracking scan arrived (USPS push-tracking pilot workspaces only).</summary>
+    TrackingUpdated,
+
+    /// <summary>A USPS package was delivered (USPS push-tracking pilot workspaces only).</summary>
+    TrackingDelivered,
+}
+
+/// <summary>A webhook subscription as the Gateway returns it.</summary>
 public sealed class WebhookSubscription
 {
     /// <summary>Subscription ID.</summary>
@@ -354,11 +380,61 @@ public sealed class WebhookSubscription
     /// <summary>Delivery URL.</summary>
     public string Url { get; set; } = string.Empty;
 
-    /// <summary>Subscribed event types.</summary>
-    public List<string> Events { get; set; } = [];
+    /// <summary>Optional description.</summary>
+    public string? Description { get; set; }
 
-    /// <summary>Whether the subscription is active.</summary>
-    public bool IsActive { get; set; }
+    /// <summary>Subscribed event names, comma-separated (for example <c>LabelCreated,LabelCanceled</c>), or <c>*</c> for every event.</summary>
+    public string EventTypes { get; set; } = string.Empty;
+
+    /// <summary><c>Active</c>, <c>Paused</c> or <c>Disabled</c>.</summary>
+    public string Status { get; set; } = string.Empty;
+
+    /// <summary>Consecutive failed deliveries. The Gateway pauses the subscription after too many.</summary>
+    public int ConsecutiveFailures { get; set; }
+
+    /// <summary>When the subscription was created (UTC).</summary>
+    public string CreatedAt { get; set; } = string.Empty;
+
+    /// <summary>When the subscription was last updated (UTC), if ever.</summary>
+    public string? UpdatedAt { get; set; }
+
+    /// <summary>The <c>whsec_...</c> signing secret. Returned only when the subscription is created; store it then.</summary>
+    public string? Secret { get; set; }
+}
+
+/// <summary>Request to create a webhook subscription.</summary>
+public sealed class CreateWebhookRequest
+{
+    /// <summary>The HTTPS URL that receives deliveries.</summary>
+    public required string Url { get; init; }
+
+    /// <summary>Optional description.</summary>
+    public string? Description { get; init; }
+
+    /// <summary>
+    /// Events to receive. Leave it <c>null</c> to receive every event. Sent as the Gateway's comma-separated
+    /// <c>eventTypes</c>; an empty list is refused.
+    /// </summary>
+    public IReadOnlyCollection<WebhookEventType>? Events { get; init; }
+}
+
+/// <summary>Request to update a webhook subscription. Only the properties you set are changed.</summary>
+public sealed class UpdateWebhookRequest
+{
+    /// <summary>New HTTPS delivery URL.</summary>
+    public string? Url { get; init; }
+
+    /// <summary>New description.</summary>
+    public string? Description { get; init; }
+
+    /// <summary>
+    /// Replaces the subscribed events. Sent as the Gateway's comma-separated <c>eventTypes</c>; an empty
+    /// list is refused.
+    /// </summary>
+    public IReadOnlyCollection<WebhookEventType>? Events { get; init; }
+
+    /// <summary>New status: <c>Active</c>, <c>Paused</c> or <c>Disabled</c>. <c>Active</c> resets the failure count.</summary>
+    public string? Status { get; init; }
 }
 
 /// <summary>Normalized label input for preview and explicit purchase. International access is server gated.</summary>
