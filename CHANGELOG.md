@@ -7,12 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (breaking)
+- `WebhooksResource.VerifySignature(payload, signature, secret)` is now `VerifySignature(payload, signature, secret, timestamp, tolerance = null, now = null)`. Pass the `X-FlexOps-Timestamp` header as the new fourth argument. The three-argument overload is removed, so existing calls fail to compile (and code compiled against 2.0.0 gets `MissingMethodException`) instead of silently rejecting every delivery. The old helper never matched a real delivery: it signed the body alone and compared against bare hex, while the Gateway signs `{timestamp}.{raw body}` and sends `sha256=<hex>` (flexops-sdk-node#41).
+
 ### Added
 - `HazmatClassification` and an optional `HazmatClassification` on `LabelRequest` and `RateShoppingRequest`. It is sent only when set; the SDK never defaults it. Labels without an `OrderId` must declare it (`HazmatClassification.None` for an ordinary parcel).
 - `Returns.GenerateLabelAsync(returnId, hazmatClassification)` sends a declared HAZMAT class with a return label.
 - `Returns.GenerateLabelAsync(returnId, ReturnLabelRequest)` sends the package weight and size (`WeightOz`, `LengthIn`, `WidthIn`, `HeightIn`) with a return label, plus `CarrierCode`, `ServiceType`, `PaymentConfirmed` and `HazmatClassification`. The Gateway needs the package: a workspace with no default shipping preset gets a 400 (`PackageMeasurementsRequired`) naming the missing fields when the other overloads are used (Gateway #672).
 
 ### Fixed
+- `WebhooksResource.VerifySignature` verifies the Gateway signature: HMAC-SHA256 over `{X-FlexOps-Timestamp}.{raw body}` keyed with the `whsec_...` secret, accepting `sha256=<hex>` or bare hex, compared in constant time. It returns `false` for missing or non-numeric timestamps and timestamps more than `tolerance` (default `DefaultSignatureTolerance`, five minutes) from now; `now` overrides the clock for tests. An empty secret throws `ArgumentException` (flexops-sdk-node#41).
+- README: added a webhook verification sample that reads the event name from `X-FlexOps-Event`; the body is the event data with no envelope (flexops-sdk-node#41).
 - `Returns.GenerateLabelAsync(returnId)` sends `{}` instead of a JSON `null` body, which the Gateway return-label route (`[FromBody] GenerateReturnLabelRequest`) refused with 400.
 - `Shipping.ValidateAddressAsync(ShippingAddress)` sends the Gateway `{ "address": { ... } }` request. The untyped overload still sends its payload as given.
 - README curl quickstart: the label example uses the Gateway `LabelRequest` shape (`carrierCode`, `serviceCode`, `origin`, `destination`, `package`) and the `api/shipping/labels` and `api/shipping/track` routes.

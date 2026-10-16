@@ -126,6 +126,9 @@ using (var validation = System.Text.Json.JsonDocument.Parse(hazmatHandler.Calls[
 }
 Console.WriteLine("Address validation contract passed.");
 
+// Webhook signatures (flexops-sdk-node#41): the Gateway's {timestamp}.{body} HMAC with sha256= prefix.
+WebhookSignatureChecks.Run();
+
 sealed class RecordingHandler : HttpMessageHandler
 {
     public List<(string Path, string Body)> Calls { get; } = [];
