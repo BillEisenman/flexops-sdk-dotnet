@@ -90,6 +90,49 @@ The typed client exposes:
 | `client.EmailTemplates` | Branded email templates |
 | `client.Reports` | Scheduled reports |
 
+## Webhook verification
+
+Each delivery is a `POST` whose body is the event data itself (there is no `{ "type", "data" }`
+envelope). The headers carry the rest:
+
+| Header | Value |
+| --- | --- |
+| `X-FlexOps-Event` | Event name, e.g. `LabelCreated`; `test` for a test delivery |
+| `X-FlexOps-Event-Id` | Event ID; use it to ignore retried duplicates |
+| `X-FlexOps-Timestamp` | Unix seconds when the delivery was signed |
+| `X-FlexOps-Signature` | `sha256=` + hex HMAC-SHA256 of `{timestamp}.{raw body}`, keyed with your `whsec_...` secret |
+| `X-FlexOps-Delivery` | Delivery attempt ID |
+
+Verify against the raw body; re-serialized JSON does not reproduce what was signed.
+
+```csharp
+using System.Text;
+using FlexOps.Sdk.Resources;
+
+app.MapPost("/webhooks/flexops", async (HttpRequest request, IConfiguration config) =>
+{
+    using var reader = new StreamReader(request.Body, Encoding.UTF8);
+    var body = await reader.ReadToEndAsync();
+
+    var isValid = WebhooksResource.VerifySignature(
+        body,
+        request.Headers["X-FlexOps-Signature"],
+        config["FlexOps:WebhookSecret"]!,
+        request.Headers["X-FlexOps-Timestamp"]); // rejected if more than 5 minutes from now
+    if (!isValid)
+    {
+        return Results.Unauthorized();
+    }
+
+    var eventType = request.Headers["X-FlexOps-Event"].ToString(); // "LabelCreated", "TrackingUpdated", "test", ...
+    using var data = System.Text.Json.JsonDocument.Parse(body);      // the event data; no envelope
+    // Process the event...
+    return Results.Ok();
+});
+```
+
+Pass `tolerance:` to change the five-minute timestamp window.
+
 ## Authentication
 
 ### Workspace API key (recommended)
