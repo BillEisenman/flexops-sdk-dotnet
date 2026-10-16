@@ -129,6 +129,9 @@ Console.WriteLine("Address validation contract passed.");
 // Webhook signatures (flexops-sdk-node#41): the Gateway's {timestamp}.{body} HMAC with sha256= prefix.
 WebhookSignatureChecks.Run();
 
+// Webhook subscriptions: events go out as the Gateway's comma-separated eventTypes (flexops-sdk-node#43).
+await WebhookSubscriptionChecks.RunAsync();
+
 sealed class RecordingHandler : HttpMessageHandler
 {
     public List<(string Path, string Body)> Calls { get; } = [];

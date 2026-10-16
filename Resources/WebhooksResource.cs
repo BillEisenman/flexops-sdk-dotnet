@@ -9,6 +9,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace FlexOps.Sdk.Resources;
 
@@ -35,15 +36,117 @@ public sealed class WebhooksResource
     }
 
     /// <summary>Create a webhook subscription.</summary>
-    public async Task<ApiResponse<WebhookSubscription>?> CreateAsync(object request, CancellationToken ct = default)
+    /// <remarks>
+    /// <see cref="CreateWebhookRequest.Events"/> is sent as the Gateway's comma-separated <c>eventTypes</c>;
+    /// leave it <c>null</c> to receive every event. <see cref="WebhookSubscription.Secret"/> is set only on
+    /// this response, so store it now.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="request"/> is <c>null</c>.</exception>
+    /// <exception cref="ArgumentException">
+    /// <see cref="CreateWebhookRequest.Events"/> is empty or holds a value that is not a defined
+    /// <see cref="WebhookEventType"/>. Nothing is sent.
+    /// </exception>
+    public async Task<ApiResponse<WebhookSubscription>?> CreateAsync(CreateWebhookRequest request, CancellationToken ct = default)
     {
-        return await _client.PostAsync<ApiResponse<WebhookSubscription>>(_client.WsPath("webhooks"), request, ct);
+        ArgumentNullException.ThrowIfNull(request);
+        var body = new SubscriptionBody(request.Url, request.Description, ToEventTypes(request.Events, nameof(request)), null);
+        return await CreateCoreAsync(body, ct);
     }
 
-    /// <summary>Update a webhook subscription.</summary>
+    /// <summary>Create a webhook subscription from an untyped payload.</summary>
+    /// <remarks>
+    /// The payload is sent as given, so it must already be the Gateway <c>CreateWebhookSubscriptionRequest</c>:
+    /// <c>url</c>, optional <c>description</c>, and <c>eventTypes</c> as one comma-separated string with no spaces
+    /// (for example <c>"LabelCreated,LabelCanceled"</c>). The Gateway ignores an <c>events</c> field and
+    /// subscribes to every event. Prefer the <see cref="CreateWebhookRequest"/> overload, which builds and
+    /// checks <c>eventTypes</c> for you.
+    /// </remarks>
+    public async Task<ApiResponse<WebhookSubscription>?> CreateAsync(object request, CancellationToken ct = default)
+    {
+        return await CreateCoreAsync(request, ct);
+    }
+
+    /// <summary>Update a webhook subscription. Only the properties set on <paramref name="request"/> are changed.</summary>
+    /// <remarks><see cref="UpdateWebhookRequest.Events"/>, when set, replaces the subscribed events.</remarks>
+    /// <exception cref="ArgumentNullException"><paramref name="request"/> is <c>null</c>.</exception>
+    /// <exception cref="ArgumentException">
+    /// <see cref="UpdateWebhookRequest.Events"/> is empty or holds a value that is not a defined
+    /// <see cref="WebhookEventType"/>. Nothing is sent.
+    /// </exception>
+    public async Task<ApiResponse<WebhookSubscription>?> UpdateAsync(string webhookId, UpdateWebhookRequest request, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var body = new SubscriptionBody(request.Url, request.Description, ToEventTypes(request.Events, nameof(request)), request.Status);
+        return await _client.PutAsync<ApiResponse<WebhookSubscription>>(_client.WsPath($"webhooks/{webhookId}"), body, ct);
+    }
+
+    /// <summary>Update a webhook subscription from an untyped payload.</summary>
+    /// <remarks>
+    /// The payload is sent as given, so subscribed events must be <c>eventTypes</c>, one comma-separated string
+    /// with no spaces; the Gateway ignores an <c>events</c> field. Prefer the <see cref="UpdateWebhookRequest"/> overload.
+    /// </remarks>
     public async Task<ApiResponse<WebhookSubscription>?> UpdateAsync(string webhookId, object data, CancellationToken ct = default)
     {
         return await _client.PutAsync<ApiResponse<WebhookSubscription>>(_client.WsPath($"webhooks/{webhookId}"), data, ct);
+    }
+
+    /// <summary>The Gateway create/update body. Null members are left out by the client serializer.</summary>
+    private sealed record SubscriptionBody(string? Url, string? Description, string? EventTypes, string? Status);
+
+    private static readonly JsonSerializerOptions ResponseJsonOptions = new(JsonSerializerDefaults.Web);
+
+    /// <summary>
+    /// Joins events into the Gateway's <c>eventTypes</c>. The Gateway matches
+    /// <c>("," + EventTypes + ",").Contains("," + name + ",")</c>, so names must be exact and the list has no
+    /// spaces. A name it never sends would leave the subscription silent, so it is refused here.
+    /// </summary>
+    private static string? ToEventTypes(IReadOnlyCollection<WebhookEventType>? events, string paramName)
+    {
+        if (events is null)
+        {
+            return null;
+        }
+
+        if (events.Count == 0)
+        {
+            throw new ArgumentException(
+                "Events must name at least one event; leave it null to receive every event.", paramName);
+        }
+
+        var unknown = events.Where(e => !Enum.IsDefined(e)).ToList();
+        if (unknown.Count > 0)
+        {
+            throw new ArgumentException(
+                $"Unknown webhook event: {string.Join(", ", unknown.Select(e => ((int)e).ToString(CultureInfo.InvariantCulture)))}. " +
+                $"FlexOps sends {string.Join(", ", Enum.GetNames<WebhookEventType>())}.",
+                paramName);
+        }
+
+        return string.Join(",", events.Distinct().Select(e => e.ToString()));
+    }
+
+    /// <summary>
+    /// The Gateway answers a create with <c>201</c> and the bare subscription (not an <see cref="ApiResponse{T}"/>
+    /// envelope). Both shapes are read so the secret is never lost.
+    /// </summary>
+    private async Task<ApiResponse<WebhookSubscription>?> CreateCoreAsync(object request, CancellationToken ct)
+    {
+        var json = await _client.PostAsync<JsonElement>(_client.WsPath("webhooks"), request, ct);
+        if (json.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        if (json.TryGetProperty("success", out _) && json.TryGetProperty("data", out _))
+        {
+            return json.Deserialize<ApiResponse<WebhookSubscription>>(ResponseJsonOptions);
+        }
+
+        return new ApiResponse<WebhookSubscription>
+        {
+            Success = true,
+            Data = json.Deserialize<WebhookSubscription>(ResponseJsonOptions),
+        };
     }
 
     /// <summary>Delete a webhook subscription.</summary>
