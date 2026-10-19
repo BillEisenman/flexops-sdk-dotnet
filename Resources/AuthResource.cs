@@ -9,7 +9,7 @@
 namespace FlexOps.Sdk.Resources;
 
 /// <summary>
-/// Authentication and account management operations.
+/// Token acquisition for operations that need a signed-in user (login, refresh, logout).
 /// </summary>
 public sealed class AuthResource
 {
@@ -18,30 +18,42 @@ public sealed class AuthResource
     /// <summary>Initializes a new instance of <see cref="AuthResource"/>.</summary>
     public AuthResource(FlexOpsClient client) => _client = client;
 
-    /// <summary>Authenticate with email and password. Returns JWT tokens.</summary>
-    public async Task<ApiResponse<object>?> LoginAsync(object request, CancellationToken ct = default)
+    /// <summary>
+    /// Authenticate with email and password (<c>{ email, password, rememberMe? }</c>). On success the client sends
+    /// the returned <see cref="LoginResponse.Token"/> as its Bearer token.
+    /// </summary>
+    /// <remarks>When <see cref="LoginResponse.RequiresTwoFactor"/> is set, no access token is issued yet.</remarks>
+    public async Task<ApiResponse<LoginResponse>?> LoginAsync(object request, CancellationToken ct = default)
     {
-        var result = await _client.PostAsync<ApiResponse<object>>("api/Account/login", request, ct);
+        var result = await _client.PostAsync<ApiResponse<LoginResponse>>("api/Account/login", request, ct);
+        UseToken(result);
         return result;
     }
 
-    /// <summary>Register a new account.</summary>
-    public async Task<ApiResponse<object>?> RegisterAsync(object request, CancellationToken ct = default)
+    /// <summary>
+    /// Exchange a refresh token for a new token pair (<c>{ token, refreshToken }</c>; the Gateway requires both).
+    /// On success the client sends the new <see cref="LoginResponse.Token"/> as its Bearer token.
+    /// </summary>
+    /// <param name="refreshToken">The refresh token issued with the current access token.</param>
+    /// <param name="accessToken">The current (possibly expired) access token. Defaults to the client's Bearer token.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <exception cref="InvalidOperationException">No access token was passed and the client has none. Nothing is sent.</exception>
+    public async Task<ApiResponse<LoginResponse>?> RefreshTokenAsync(string refreshToken, string? accessToken = null, CancellationToken ct = default)
     {
-        return await _client.PostAsync<ApiResponse<object>>("api/Account/register", request, ct);
-    }
+        ArgumentException.ThrowIfNullOrWhiteSpace(refreshToken);
+        var token = accessToken ?? _client.AccessToken;
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            throw new InvalidOperationException(
+                "Refreshing needs the current access token: pass accessToken, or log in or call SetAccessToken first.");
+        }
 
-    /// <summary>Refresh an expired access token using a refresh token.</summary>
-    public async Task<ApiResponse<object>?> RefreshTokenAsync(string refreshToken, CancellationToken ct = default)
-    {
-        // The refresh token is sent via X-Current-Session-Token header;
-        // PostAsync doesn't support custom headers, so we pass it in the body
-        // and rely on the server accepting it. For header-based refresh, use
-        // the underlying FlexOpsClient directly.
-        return await _client.PostAsync<ApiResponse<object>>(
+        var result = await _client.PostAsync<ApiResponse<LoginResponse>>(
             "api/Account/refresh-token",
-            new { refreshToken },
+            new { token, refreshToken },
             ct);
+        UseToken(result);
+        return result;
     }
 
     /// <summary>Log out and invalidate the current session.</summary>
@@ -50,51 +62,11 @@ public sealed class AuthResource
         return await _client.PostAsync<ApiResponse<object>>("api/Account/logout", null, ct);
     }
 
-    /// <summary>Get the current user's profile.</summary>
-    public async Task<ApiResponse<object>?> GetProfileAsync(CancellationToken ct = default)
+    private void UseToken(ApiResponse<LoginResponse>? result)
     {
-        return await _client.GetAsync<ApiResponse<object>>("api/Account/profile", ct);
-    }
-
-    /// <summary>Update the current user's profile.</summary>
-    public async Task<ApiResponse<object>?> UpdateProfileAsync(object data, CancellationToken ct = default)
-    {
-        return await _client.PutAsync<ApiResponse<object>>("api/Account/profile", data, ct);
-    }
-
-    /// <summary>Change the current user's password.</summary>
-    public async Task<ApiResponse<object>?> ChangePasswordAsync(string currentPassword, string newPassword, CancellationToken ct = default)
-    {
-        return await _client.PostAsync<ApiResponse<object>>(
-            "api/Account/change-password",
-            new { currentPassword, newPassword },
-            ct);
-    }
-
-    /// <summary>Request a password reset email.</summary>
-    public async Task<ApiResponse<object>?> ForgotPasswordAsync(string email, CancellationToken ct = default)
-    {
-        return await _client.PostAsync<ApiResponse<object>>(
-            "api/Account/forgot-password",
-            new { email },
-            ct);
-    }
-
-    /// <summary>Reset password using a reset token.</summary>
-    public async Task<ApiResponse<object>?> ResetPasswordAsync(string token, string newPassword, CancellationToken ct = default)
-    {
-        return await _client.PostAsync<ApiResponse<object>>(
-            "api/Account/reset-password",
-            new { token, newPassword },
-            ct);
-    }
-
-    /// <summary>Verify email with the verification token.</summary>
-    public async Task<ApiResponse<object>?> VerifyEmailAsync(string token, CancellationToken ct = default)
-    {
-        return await _client.PostAsync<ApiResponse<object>>(
-            "api/Account/verify-email",
-            new { token },
-            ct);
+        if (result?.Data?.Token is { Length: > 0 } token)
+        {
+            _client.SetAccessToken(token);
+        }
     }
 }

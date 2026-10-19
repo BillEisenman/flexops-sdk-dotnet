@@ -9,7 +9,7 @@
 namespace FlexOps.Sdk.Resources;
 
 /// <summary>
-/// Inventory management via the VisionSuite API proxy.
+/// Read-only inventory lookups via the VisionSuite API proxy. The proxy refuses writes from API keys.
 /// </summary>
 public sealed class InventoryResource
 {
@@ -17,12 +17,6 @@ public sealed class InventoryResource
 
     /// <summary>Initializes a new instance of <see cref="InventoryResource"/>.</summary>
     public InventoryResource(FlexOpsClient client) => _client = client;
-
-    /// <summary>Post a new ASN (Advance Shipment Notice) receipt.</summary>
-    public async Task<ApiResponse<object>?> PostAsnReceiptAsync(object receipt, CancellationToken ct = default)
-    {
-        return await _client.PostAsync<ApiResponse<object>>("api/ApiProxy/api/v1/Inventory/postNewAsnReceipt", receipt, ct);
-    }
 
     /// <summary>Get a warehouse inventory snapshot.</summary>
     public async Task<ApiResponse<object>?> GetWarehouseSnapshotAsync(CancellationToken ct = default)
@@ -40,11 +34,5 @@ public sealed class InventoryResource
     public async Task<ApiResponse<object>?> GetPartNumbersAsync(CancellationToken ct = default)
     {
         return await _client.GetAsync<ApiResponse<object>>("api/ApiProxy/api/v1/Inventory/getPartNumberList", ct);
-    }
-
-    /// <summary>Update customer inventory (V2).</summary>
-    public async Task<ApiResponse<object>?> UpdateInventoryAsync(object data, CancellationToken ct = default)
-    {
-        return await _client.PostAsync<ApiResponse<object>>("api/ApiProxy/api/v2/Inventory/postCustomerInventoryUpdate", data, ct);
     }
 }

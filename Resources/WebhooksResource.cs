@@ -29,12 +29,6 @@ public sealed class WebhooksResource
         return await _client.GetAsync<ApiResponse<WebhookSubscription[]>>(_client.WsPath("webhooks"), ct);
     }
 
-    /// <summary>Get a webhook subscription by ID.</summary>
-    public async Task<ApiResponse<WebhookSubscription>?> GetAsync(string webhookId, CancellationToken ct = default)
-    {
-        return await _client.GetAsync<ApiResponse<WebhookSubscription>>(_client.WsPath($"webhooks/{webhookId}"), ct);
-    }
-
     /// <summary>Create a webhook subscription.</summary>
     /// <remarks>
     /// <see cref="CreateWebhookRequest.Events"/> is sent as the Gateway's comma-separated <c>eventTypes</c>;
@@ -149,7 +143,7 @@ public sealed class WebhooksResource
         };
     }
 
-    /// <summary>Delete a webhook subscription.</summary>
+    /// <summary>Delete a webhook subscription. Returns <c>null</c> (204 No Content) on success.</summary>
     public async Task<ApiResponse<object>?> DeleteAsync(string webhookId, CancellationToken ct = default)
     {
         return await _client.DeleteAsync<ApiResponse<object>>(_client.WsPath($"webhooks/{webhookId}"), ct);
@@ -159,6 +153,12 @@ public sealed class WebhooksResource
     public async Task<ApiResponse<object>?> RotateSecretAsync(string webhookId, CancellationToken ct = default)
     {
         return await _client.PostAsync<ApiResponse<object>>(_client.WsPath($"webhooks/{webhookId}/rotate-secret"), null, ct);
+    }
+
+    /// <summary>Send a test delivery to a webhook. It arrives with <c>X-FlexOps-Event: test</c>.</summary>
+    public async Task<ApiResponse<object>?> TestAsync(string webhookId, CancellationToken ct = default)
+    {
+        return await _client.PostAsync<ApiResponse<object>>(_client.WsPath($"webhooks/{webhookId}/test"), null, ct);
     }
 
     /// <summary>List delivery logs for a webhook.</summary>

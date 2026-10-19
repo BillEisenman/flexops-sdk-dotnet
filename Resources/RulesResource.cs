@@ -30,27 +30,40 @@ public sealed class RulesResource
         return await _client.GetAsync<ApiResponse<object>>(_client.WsPath($"shipping-rules/{ruleId}"), ct);
     }
 
-    /// <summary>Create a shipping rule.</summary>
-    public async Task<ApiResponse<object>?> CreateAsync(object rule, CancellationToken ct = default)
+    /// <summary>Create a shipping rule (201 Created).</summary>
+    public async Task<ApiResponse<object>?> CreateAsync(CreateShippingRuleRequest rule, CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(rule);
         return await _client.PostAsync<ApiResponse<object>>(_client.WsPath("shipping-rules"), rule, ct);
     }
 
-    /// <summary>Update a shipping rule.</summary>
-    public async Task<ApiResponse<object>?> UpdateAsync(string ruleId, object rule, CancellationToken ct = default)
+    /// <summary>Update a shipping rule. Only the properties set on <paramref name="rule"/> change.</summary>
+    public async Task<ApiResponse<object>?> UpdateAsync(string ruleId, UpdateShippingRuleRequest rule, CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(rule);
         return await _client.PutAsync<ApiResponse<object>>(_client.WsPath($"shipping-rules/{ruleId}"), rule, ct);
     }
 
-    /// <summary>Delete a shipping rule.</summary>
+    /// <summary>Delete a shipping rule. Returns <c>null</c> (204 No Content) on success.</summary>
     public async Task<ApiResponse<object>?> DeleteAsync(string ruleId, CancellationToken ct = default)
     {
         return await _client.DeleteAsync<ApiResponse<object>>(_client.WsPath($"shipping-rules/{ruleId}"), ct);
     }
 
-    /// <summary>Reorder rules (set priority).</summary>
-    public async Task<ApiResponse<object>?> ReorderAsync(string[] ruleIds, CancellationToken ct = default)
+    /// <summary>Set the priority of several rules at once.</summary>
+    /// <param name="rules">Each rule and its new priority.</param>
+    /// <param name="ct">Cancellation token.</param>
+    public async Task<ApiResponse<object>?> ReorderAsync(IEnumerable<RulePriority> rules, CancellationToken ct = default)
     {
-        return await _client.PutAsync<ApiResponse<object>>(_client.WsPath("shipping-rules/reorder"), new { ruleIds }, ct);
+        ArgumentNullException.ThrowIfNull(rules);
+        return await _client.PostAsync<ApiResponse<object>>(_client.WsPath("shipping-rules/reorder"), new { rules = rules.ToList() }, ct);
+    }
+
+    /// <summary>Dry-run the workspace's rules against a hypothetical shipment; nothing is changed.</summary>
+    /// <returns>Which rules matched, condition by condition, and the actions the winning rule would apply.</returns>
+    public async Task<ApiResponse<object>?> TestAsync(TestShippingRuleRequest shipment, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(shipment);
+        return await _client.PostAsync<ApiResponse<object>>(_client.WsPath("shipping-rules/test"), shipment, ct);
     }
 }

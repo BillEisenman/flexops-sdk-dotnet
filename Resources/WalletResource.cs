@@ -9,7 +9,7 @@
 namespace FlexOps.Sdk.Resources;
 
 /// <summary>
-/// Wallet balance and transaction management.
+/// Wallet balance of the configured workspace. Funding and auto-reload are managed in the FlexOps portal.
 /// </summary>
 public sealed class WalletResource
 {
@@ -18,27 +18,14 @@ public sealed class WalletResource
     /// <summary>Initializes a new instance of <see cref="WalletResource"/>.</summary>
     public WalletResource(FlexOpsClient client) => _client = client;
 
-    /// <summary>Get the current wallet balance.</summary>
-    public async Task<ApiResponse<WalletBalance>?> GetBalanceAsync(CancellationToken ct = default)
+    /// <summary>
+    /// Get the wallet balance of the configured workspace (<c>GET api/wallet/my-balance</c> with
+    /// <c>X-Workspace-Id</c>). The Gateway answers with the bare balance, not an <see cref="ApiResponse{T}"/>.
+    /// </summary>
+    /// <exception cref="InvalidOperationException"><see cref="FlexOpsClient.WorkspaceId"/> is not set.</exception>
+    public async Task<WalletBalance?> GetBalanceAsync(CancellationToken ct = default)
     {
-        return await _client.GetAsync<ApiResponse<WalletBalance>>(_client.WsPath("wallet/balance"), ct);
-    }
-
-    /// <summary>Add funds to the wallet.</summary>
-    public async Task<ApiResponse<object>?> AddFundsAsync(decimal amount, CancellationToken ct = default)
-    {
-        return await _client.PostAsync<ApiResponse<object>>(_client.WsPath("wallet/add-funds"), new { amount }, ct);
-    }
-
-    /// <summary>List wallet transactions.</summary>
-    public async Task<ApiResponse<object>?> ListTransactionsAsync(object? query = null, CancellationToken ct = default)
-    {
-        return await _client.GetAsync<ApiResponse<object>>(_client.WsPath("wallet/transactions"), ct);
-    }
-
-    /// <summary>Configure auto-reload settings.</summary>
-    public async Task<ApiResponse<object>?> ConfigureAutoReloadAsync(object config, CancellationToken ct = default)
-    {
-        return await _client.PutAsync<ApiResponse<object>>(_client.WsPath("wallet/auto-reload"), config, ct);
+        var headers = new Dictionary<string, string> { ["X-Workspace-Id"] = _client.RequireWorkspaceId() };
+        return await _client.GetAsync<WalletBalance>("api/wallet/my-balance", headers, ct);
     }
 }

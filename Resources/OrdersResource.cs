@@ -9,7 +9,7 @@
 namespace FlexOps.Sdk.Resources;
 
 /// <summary>
-/// Order management via the VisionSuite API proxy (V1 Order endpoints).
+/// Read-only order lookups via the VisionSuite API proxy (V1 Order endpoints). The proxy refuses writes from API keys.
 /// All methods proxy through <c>/api/ApiProxy/api/v1/Order/...</c>.
 /// </summary>
 public sealed class OrdersResource
@@ -20,12 +20,6 @@ public sealed class OrdersResource
     public OrdersResource(FlexOpsClient client) => _client = client;
 
     private static string Path(string endpoint) => $"api/ApiProxy/api/v1/Order/{endpoint}";
-
-    /// <summary>Create a new order.</summary>
-    public async Task<ApiResponse<object>?> CreateAsync(object order, CancellationToken ct = default)
-    {
-        return await _client.PostAsync<ApiResponse<object>>(Path("postNewOrder"), order, ct);
-    }
 
     /// <summary>Get new orders awaiting processing.</summary>
     public async Task<ApiResponse<object>?> GetNewOrdersAsync(CancellationToken ct = default)
@@ -55,12 +49,6 @@ public sealed class OrdersResource
     public async Task<ApiResponse<object>?> GetStatusAsync(string orderNumber, CancellationToken ct = default)
     {
         return await _client.GetAsync<ApiResponse<object>>(Path($"getIndividualOrderStatusByOrderNumber?orderNumber={Uri.EscapeDataString(orderNumber)}"), ct);
-    }
-
-    /// <summary>Cancel an order by order number.</summary>
-    public async Task<ApiResponse<object>?> CancelAsync(string orderNumber, CancellationToken ct = default)
-    {
-        return await _client.PostAsync<ApiResponse<object>>(Path("cancelOrderByOrderNumber"), new { orderNumber }, ct);
     }
 
     /// <summary>Get all items for an order.</summary>

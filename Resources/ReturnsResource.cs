@@ -6,6 +6,8 @@
 // Copyright (c) 2021-2026 by FlexOps, LLC. All rights reserved.
 // ***********************************************************************
 
+using System.Globalization;
+
 namespace FlexOps.Sdk.Resources;
 
 /// <summary>
@@ -18,10 +20,27 @@ public sealed class ReturnsResource
     /// <summary>Initializes a new instance of <see cref="ReturnsResource"/>.</summary>
     public ReturnsResource(FlexOpsClient client) => _client = client;
 
-    /// <summary>List all return authorizations.</summary>
-    public async Task<ApiResponse<object[]>?> ListAsync(CancellationToken ct = default)
+    /// <summary>List returns created in a date range, one page at a time.</summary>
+    /// <param name="startDate">Earliest creation date; the Gateway default applies when <c>null</c>.</param>
+    /// <param name="endDate">Latest creation date; the Gateway default applies when <c>null</c>.</param>
+    /// <param name="page">Page number, from 1.</param>
+    /// <param name="pageSize">Items per page.</param>
+    /// <param name="ct">Cancellation token.</param>
+    public async Task<ApiResponse<object[]>?> ListAsync(
+        DateTime? startDate = null,
+        DateTime? endDate = null,
+        int page = 1,
+        int pageSize = 25,
+        CancellationToken ct = default)
     {
-        return await _client.GetAsync<ApiResponse<object[]>>(_client.WsPath("returns"), ct);
+        var path = FlexOpsClient.WithQuery(_client.WsPath("returns"),
+        [
+            new("startDate", startDate?.ToString("O", CultureInfo.InvariantCulture)),
+            new("endDate", endDate?.ToString("O", CultureInfo.InvariantCulture)),
+            new("page", page.ToString(CultureInfo.InvariantCulture)),
+            new("pageSize", pageSize.ToString(CultureInfo.InvariantCulture)),
+        ]);
+        return await _client.GetAsync<ApiResponse<object[]>>(path, ct);
     }
 
     /// <summary>Get a return authorization by ID.</summary>
@@ -30,28 +49,11 @@ public sealed class ReturnsResource
         return await _client.GetAsync<ApiResponse<object>>(_client.WsPath($"returns/{returnId}"), ct);
     }
 
-    /// <summary>Create a return authorization (RMA).</summary>
-    public async Task<ApiResponse<object>?> CreateAsync(object request, CancellationToken ct = default)
+    /// <summary>Create a return authorization (RMA). The Gateway answers 201 with the RMA in the envelope.</summary>
+    public async Task<ApiResponse<object>?> CreateAsync(CreateRmaRequest request, CancellationToken ct = default)
     {
-        return await _client.PostAsync<ApiResponse<object>>(_client.WsPath("returns"), request, ct);
-    }
-
-    /// <summary>Approve a return authorization.</summary>
-    public async Task<ApiResponse<object>?> ApproveAsync(string returnId, CancellationToken ct = default)
-    {
-        return await _client.PostAsync<ApiResponse<object>>(_client.WsPath($"returns/{returnId}/approve"), null, ct);
-    }
-
-    /// <summary>Reject a return authorization.</summary>
-    public async Task<ApiResponse<object>?> RejectAsync(string returnId, string reason, CancellationToken ct = default)
-    {
-        return await _client.PostAsync<ApiResponse<object>>(_client.WsPath($"returns/{returnId}/reject"), new { reason }, ct);
-    }
-
-    /// <summary>Cancel a return authorization.</summary>
-    public async Task<ApiResponse<object>?> CancelAsync(string returnId, CancellationToken ct = default)
-    {
-        return await _client.PostAsync<ApiResponse<object>>(_client.WsPath($"returns/{returnId}/cancel"), null, ct);
+        ArgumentNullException.ThrowIfNull(request);
+        return await _client.PostAsync<ApiResponse<object>>(_client.WsPath("returns/rma"), request, ct);
     }
 
     /// <summary>Generate a return label for an approved RMA.</summary>
@@ -85,15 +87,13 @@ public sealed class ReturnsResource
         return await _client.PostAsync<ApiResponse<object>>(_client.WsPath($"returns/{returnId}/label"), request, ct);
     }
 
-    /// <summary>Mark items as received.</summary>
-    public async Task<ApiResponse<object>?> MarkReceivedAsync(string returnId, object items, CancellationToken ct = default)
+    /// <summary>Receive an RMA's items and record what happens to each.</summary>
+    /// <param name="rmaId">The numeric RMA ID.</param>
+    /// <param name="request">The RMA number, receiving warehouse and inspected items.</param>
+    /// <param name="ct">Cancellation token.</param>
+    public async Task<ApiResponse<object>?> MarkReceivedAsync(long rmaId, ReceiveRmaRequest request, CancellationToken ct = default)
     {
-        return await _client.PostAsync<ApiResponse<object>>(_client.WsPath($"returns/{returnId}/receive"), items, ct);
-    }
-
-    /// <summary>Process refund for a return.</summary>
-    public async Task<ApiResponse<object>?> ProcessRefundAsync(string returnId, CancellationToken ct = default)
-    {
-        return await _client.PostAsync<ApiResponse<object>>(_client.WsPath($"returns/{returnId}/refund"), null, ct);
+        ArgumentNullException.ThrowIfNull(request);
+        return await _client.PostAsync<ApiResponse<object>>(_client.WsPath($"returns/{rmaId}/receive"), request, ct);
     }
 }

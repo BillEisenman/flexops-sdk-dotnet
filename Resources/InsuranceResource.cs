@@ -9,7 +9,7 @@
 namespace FlexOps.Sdk.Resources;
 
 /// <summary>
-/// Shipping insurance quotes, purchases, and claims.
+/// Shipping insurance quotes, purchases, and claims. Responses use the <see cref="ApiResponse{T}"/> envelope.
 /// </summary>
 public sealed class InsuranceResource
 {
@@ -25,26 +25,33 @@ public sealed class InsuranceResource
     }
 
     /// <summary>Get an insurance quote.</summary>
-    public async Task<ApiResponse<object>?> GetQuoteAsync(object request, CancellationToken ct = default)
+    public async Task<ApiResponse<object>?> GetQuoteAsync(InsuranceQuoteRequest request, CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
         return await _client.PostAsync<ApiResponse<object>>(_client.WsPath("insurance/quote"), request, ct);
     }
 
-    /// <summary>Purchase insurance for a shipment.</summary>
-    public async Task<ApiResponse<object>?> PurchaseAsync(object request, CancellationToken ct = default)
+    /// <summary>Purchase an insurance policy for a shipment (201 Created).</summary>
+    /// <remarks>
+    /// Pass <paramref name="idempotencyKey"/> and reuse it if you retry after a timeout or unknown outcome, so a
+    /// retried purchase is not charged twice. Without one, the SDK sends a new key for this call only.
+    /// </remarks>
+    public async Task<ApiResponse<object>?> PurchaseAsync(PurchaseInsuranceRequest request, string? idempotencyKey = null, CancellationToken ct = default)
     {
-        return await _client.PostAsync<ApiResponse<object>>(_client.WsPath("insurance/purchase"), request, ct);
+        ArgumentNullException.ThrowIfNull(request);
+        return await _client.PostAsync<ApiResponse<object>>(_client.WsPath("insurance/policies"), request, ct, idempotencyKey);
     }
 
-    /// <summary>Void an insurance policy.</summary>
+    /// <summary>Void (cancel) an insurance policy.</summary>
     public async Task<ApiResponse<object>?> VoidAsync(string policyId, CancellationToken ct = default)
     {
         return await _client.DeleteAsync<ApiResponse<object>>(_client.WsPath($"insurance/policies/{policyId}"), ct);
     }
 
-    /// <summary>File an insurance claim.</summary>
-    public async Task<ApiResponse<object>?> FileClaimAsync(string policyId, object claim, CancellationToken ct = default)
+    /// <summary>File a claim against a policy (201 Created).</summary>
+    public async Task<ApiResponse<object>?> FileClaimAsync(FileInsuranceClaimRequest request, CancellationToken ct = default)
     {
-        return await _client.PostAsync<ApiResponse<object>>(_client.WsPath($"insurance/policies/{policyId}/claims"), claim, ct);
+        ArgumentNullException.ThrowIfNull(request);
+        return await _client.PostAsync<ApiResponse<object>>(_client.WsPath("insurance/claims"), request, ct);
     }
 }
