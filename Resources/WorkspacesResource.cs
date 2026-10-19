@@ -9,7 +9,7 @@
 namespace FlexOps.Sdk.Resources;
 
 /// <summary>
-/// Workspace management operations (CRUD, members, invitations).
+/// Workspaces the caller belongs to, and their members and invitations.
 /// </summary>
 public sealed class WorkspacesResource
 {
@@ -24,52 +24,46 @@ public sealed class WorkspacesResource
         return await _client.GetAsync<ApiResponse<Workspace[]>>("api/workspaces", ct);
     }
 
-    /// <summary>Get details for a specific workspace.</summary>
-    public async Task<ApiResponse<Workspace>?> GetAsync(string? workspaceId = null, CancellationToken ct = default)
+    /// <summary>Get details for a workspace; the configured workspace when <paramref name="workspaceId"/> is <c>null</c>.</summary>
+    public async Task<ApiResponse<WorkspaceDetail>?> GetAsync(string? workspaceId = null, CancellationToken ct = default)
     {
-        var id = workspaceId ?? _client.WorkspaceId;
-        return await _client.GetAsync<ApiResponse<Workspace>>($"api/workspaces/{id}", ct);
+        var id = workspaceId ?? _client.RequireWorkspaceId();
+        return await _client.GetAsync<ApiResponse<WorkspaceDetail>>($"api/workspaces/{id}", ct);
     }
 
-    /// <summary>Create a new workspace.</summary>
-    public async Task<ApiResponse<Workspace>?> CreateAsync(object request, CancellationToken ct = default)
+    /// <summary>List the members and pending invitations of the current workspace.</summary>
+    public async Task<ApiResponse<WorkspaceMemberList>?> ListMembersAsync(CancellationToken ct = default)
     {
-        return await _client.PostAsync<ApiResponse<Workspace>>("api/workspaces", request, ct);
-    }
-
-    /// <summary>Update workspace settings.</summary>
-    public async Task<ApiResponse<Workspace>?> UpdateAsync(object data, CancellationToken ct = default)
-    {
-        return await _client.PutAsync<ApiResponse<Workspace>>(_client.WsPath(""), ct);
-    }
-
-    /// <summary>List members of the current workspace.</summary>
-    public async Task<ApiResponse<object[]>?> ListMembersAsync(CancellationToken ct = default)
-    {
-        return await _client.GetAsync<ApiResponse<object[]>>(_client.WsPath("members"), ct);
+        return await _client.GetAsync<ApiResponse<WorkspaceMemberList>>(_client.WsPath("members"), ct);
     }
 
     /// <summary>Invite a user to the workspace.</summary>
-    public async Task<ApiResponse<object>?> InviteMemberAsync(string email, string role = "Member", CancellationToken ct = default)
+    /// <param name="email">The invitee's email address.</param>
+    /// <param name="role">The role granted on acceptance; sent as the Gateway <c>WorkspaceRole</c> number.</param>
+    /// <param name="ct">Cancellation token.</param>
+    public async Task<ApiResponse<object>?> InviteMemberAsync(string email, WorkspaceRole role = WorkspaceRole.Member, CancellationToken ct = default)
     {
         return await _client.PostAsync<ApiResponse<object>>(
             _client.WsPath("members/invite"),
-            new { email, role },
+            new { email, role = (int)role },
             ct);
     }
 
-    /// <summary>Remove a member from the workspace.</summary>
+    /// <summary>Remove a member from the workspace. Returns <c>null</c> (204 No Content) on success.</summary>
     public async Task<ApiResponse<object>?> RemoveMemberAsync(string userId, CancellationToken ct = default)
     {
         return await _client.DeleteAsync<ApiResponse<object>>(_client.WsPath($"members/{userId}"), ct);
     }
 
-    /// <summary>Update a member's role.</summary>
-    public async Task<ApiResponse<object>?> UpdateMemberRoleAsync(string userId, string role, CancellationToken ct = default)
+    /// <summary>Change a member's role.</summary>
+    /// <param name="userId">The member's user ID (<see cref="WorkspaceMember.UserId"/>).</param>
+    /// <param name="newRole">The new role; sent as the Gateway <c>WorkspaceRole</c> number.</param>
+    /// <param name="ct">Cancellation token.</param>
+    public async Task<ApiResponse<object>?> UpdateMemberRoleAsync(string userId, WorkspaceRole newRole, CancellationToken ct = default)
     {
         return await _client.PutAsync<ApiResponse<object>>(
             _client.WsPath($"members/{userId}/role"),
-            new { role },
+            new { newRole = (int)newRole },
             ct);
     }
 }

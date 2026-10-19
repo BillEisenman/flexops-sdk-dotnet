@@ -10,7 +10,7 @@ dotnet add package FlexOps.Sdk
 
 ## Quick start
 
-The `FlexOpsTypedClient` is the primary entry point. It exposes 20 resource properties — one per Gateway domain — each with strongly-typed methods, XML doc comments, and `CancellationToken` support.
+The `FlexOpsTypedClient` is the primary entry point. It exposes 19 resource properties — one per Gateway domain — each with strongly-typed methods, XML doc comments, and `CancellationToken` support.
 
 ```csharp
 using FlexOps.Sdk;
@@ -54,8 +54,13 @@ if (label is null)
 // Track
 var tracking = await client.Shipping.TrackAsync("9400111899223456789012");
 
-// Create a return
-var rma = await client.Returns.CreateRmaAsync(new { originalShipmentId = label!.LabelId, reason = "wrong_size" });
+// Create a return authorization for an order
+var rma = await client.Returns.CreateAsync(new CreateRmaRequest
+{
+    OrderId = 1042,
+    Reason = "Wrong size",
+    Items = [new RmaItem { Sku = "TS-1", Quantity = 1 }],
+});
 
 // Buy the return label. Send the package weight and size: anything left out comes from the
 // workspace's default shipping preset, and with no preset the API answers 400 PackageMeasurementsRequired.
@@ -69,26 +74,51 @@ The typed client exposes:
 
 | Property | Domain |
 | --- | --- |
-| `client.Auth` | Login, register, password management |
-| `client.Workspaces` | Workspace CRUD, members, invitations |
+| `client.Auth` | Login, token refresh, logout (for operations that need a signed-in user) |
+| `client.Workspaces` | Your workspaces, members, invitations |
 | `client.Shipping` | Rates, labels, tracking, batch, address validation |
-| `client.Carriers` | Direct carrier-specific ops (USPS, UPS, FedEx, DHL) |
-| `client.Webhooks` | Subscriptions + signature verification |
-| `client.Wallet` | Balance, top-up, transactions |
-| `client.Insurance` | Quotes, purchases, claims |
-| `client.Returns` | RMAs, return labels, batch disposition |
-| `client.ApiKeys` | Create, revoke, rotate |
+| `client.Carriers` | Carrier lookups (USPS, UPS, DHL); deprecated proxy writes (USPS, UPS, FedEx, DHL) |
+| `client.Webhooks` | Subscriptions, test deliveries, signature verification |
+| `client.Wallet` | Workspace wallet balance |
+| `client.Insurance` | Quotes, policies, claims |
+| `client.Returns` | RMAs, return labels, receiving |
 | `client.Analytics` | Shipments, carriers, orders, returns |
-| `client.Orders` | Order CRUD via VisionSuite proxy |
-| `client.Inventory` | Inventory CRUD via VisionSuite proxy |
+| `client.Orders` | Read-only order lookups via the VisionSuite proxy |
+| `client.Inventory` | Read-only inventory lookups via the VisionSuite proxy |
 | `client.Pickups` | Carrier pickup scheduling |
 | `client.ScanForms` | USPS scan form / manifest management |
-| `client.Rules` | Shipping automation rules |
-| `client.Offsets` | Carbon offset operations |
+| `client.Rules` | Shipping automation rules, including dry-run tests |
 | `client.HsCodes` | HS code search, lookup, landed cost |
-| `client.RecurringShipments` | Schedule management |
-| `client.EmailTemplates` | Branded email templates |
-| `client.Reports` | Scheduled reports |
+| `client.CarbonOffsets` | Carbon offset quotes, purchases, history and settings |
+| `client.RecurringShipments` | Recurring shipment schedules (pause, resume, run now) |
+| `client.ReportSchedules` | Scheduled reports emailed to recipients (`client.Reports` in 2.x) |
+| `client.EmailTemplates` | Shipment notification email templates, one per tracking event |
+
+The SDK covers the documented public Gateway API. Account, API-key and billing management live in the FlexOps
+portal. Orders and inventory are read-only lookups through the legacy VisionSuite proxy, which refuses writes from
+API keys.
+
+`RecurringShipments`, `ReportSchedules` and `EmailTemplates` reads work with any API key or a user token. Their
+writes (create, update, delete, pause, resume, trigger, toggle, upsert, and email-template preview) need a user token
+from `client.Auth.LoginAsync`, or an API key granted the resource's opt-in scope: `recurring-shipments:write`,
+`report-schedules:write` or `email-templates:write`. Older keys don't have these scopes; an API key without one gets
+403 `API_KEY_SCOPE_REQUIRED` with `requiredScopes`.
+
+```csharp
+// Wallet balance of the configured workspace (sent with X-Workspace-Id)
+var balance = await client.Wallet.GetBalanceAsync();
+Console.WriteLine($"{balance!.Balance:C} ({balance.BalanceCents} cents)");
+
+// Address validation
+var check = await client.Shipping.ValidateAddressAsync(new AddressValidationRequest
+{
+    Line1 = "1 Main St", City = "Albany", State = "NY", PostalCode = "12207",
+});
+if (check!.ValidationUnavailable) { /* no carrier answered; this is not a rejection */ }
+
+// Invite a member; roles go out as the Gateway's WorkspaceRole numbers
+await client.Workspaces.InviteMemberAsync("ops@example.com", WorkspaceRole.Admin);
+```
 
 ## Webhook subscriptions
 
@@ -201,6 +231,48 @@ using var client = new FlexOpsTypedClient(
     httpClient: httpClient);
 ```
 
+## Errors, retries and idempotency
+
+A non-success response throws `FlexOpsException` with the HTTP `StatusCode` and the Gateway `ErrorCode`
+(for example `API_KEY_SCOPE_REQUIRED`, `PackageMeasurementsRequired`, `IDEMPOTENCY_CONFLICT`); 401 and 403 throw
+`FlexOpsAuthException` and 429 throws `FlexOpsRateLimitException`. A success with no body (204) returns `null`.
+
+The SDK does not retry. Every POST and PUT carries an `Idempotency-Key` header: the key you pass (label
+purchases, `Insurance.PurchaseAsync`, `CarbonOffsets.PurchaseAsync`) or a new GUID for that call. A resilience
+handler on your `HttpClient` resends the same request, and so the same key, and the Gateway replays a write it
+already finished instead of charging again. Retry safely:
+
+| Request | Retry on |
+| --- | --- |
+| GET | network error, timeout, 429, 500, 502, 503, 504 |
+| POST, PUT | network error, timeout, 429, 502, 503, 504, and 409 `IDEMPOTENCY_CONFLICT`; **never 500**, which the Gateway does not keep for replay |
+| DELETE | 429 only (DELETE is not deduplicated) |
+
+Reusing a key with a different request gets 422 `IDEMPOTENCY_KEY_REUSED`: it surfaces as `FlexOpsException` with
+that `ErrorCode` and must not be retried. Only 409 `IDEMPOTENCY_CONFLICT`, matched exactly, means the first request
+with that key is still running. The label-purchase and managed-return `IdempotencyConflict` 409 (an altered request)
+is not retryable either.
+
+## Carrier-specific operations
+
+`client.Carriers` reaches USPS, UPS, FedEx and DHL through the legacy VisionSuite proxy (`api/ApiProxy/...`).
+
+- **Lookups (GET)** work with API keys: USPS address, ZIP and city lookups, tracking, delivery standards and
+  locations; UPS tracking; DHL address validation, rates, products, tracking, proof of delivery, reference data and
+  service points. Pass parameters as an `IReadOnlyDictionary<string, string>`; they go in the query string.
+- **Writes (POST, PUT, DELETE)** are `[Obsolete]`. They need a user token (API keys get 403 `API_KEY_SCOPE_REQUIRED`)
+  and stop working when the proxy is retired on 2027-06-30. The proxy's label routes already answer 410 Gone, so the
+  SDK has no proxy label methods. Native replacements:
+
+| Instead of | Use |
+| --- | --- |
+| Carrier rate searches and quotes | `client.Shipping.GetRatesAsync`, `GetCheapestRateAsync`, `GetFastestRateAsync` |
+| Carrier labels and cancellations | `client.Shipping.PrepareLabelAsync`, `PurchaseLabelAsync`, `CancelLabelAsync` |
+| Carrier address validation | `client.Shipping.ValidateAddressAsync` |
+| Carrier pickups | `client.Pickups` |
+| USPS scan forms | `client.ScanForms` |
+| Landed cost | `client.HsCodes.EstimateLandedCostAsync` |
+
 ## Sandbox
 
 Use an `fxk_test_...` API key instead of `fxk_live_...` to hit the sandbox. Mock carriers respond, no real charges, no real labels — useful for CI, integration tests, and demos. Tracking numbers are prefixed `SBOX...` so you can tell them apart from production.
@@ -277,7 +349,7 @@ These methods require a Gateway deployment with the bounded approval contract. C
 
 Retain the operation's request JSON and idempotency key securely, with the original Gateway and credential identity. On a timeout or OutcomeUnknown, retry that operation only or reconcile with an operator. Do not regenerate keys. Completed purchases can replay after token expiry. Sandbox preparation returns SandboxLabel and does not create real postage. Legacy CreateLabelAsync and the USPS wrapper reject preview responses rather than misreporting a label; use the shared Shipping prepare/purchase methods for live purchases.
 
-Run `dotnet run --project tests/FlexOps.Sdk.ContractCheck --configuration Release` for the repository-owned rate and approval/replay checks.
+Run `dotnet run --project tests/FlexOps.Sdk.ContractCheck --configuration Release` for the repository-owned checks: rates, label approval and replay, HTTP policy, routes and bodies, and the contract test that every SDK method calls a documented Gateway operation.
 
 ## Guarded label release compatibility
 

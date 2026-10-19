@@ -82,6 +82,8 @@ public sealed class ShippingResource
     public async Task<Label?> CreateLabelAsync(object request, CancellationToken ct = default)
     {
         var response = await _client.PostAsync<JsonElement>("api/shipping/labels", request, ct);
+        if (response.ValueKind != JsonValueKind.Object)
+            return null;
         if (response.TryGetProperty("status", out var status) && status.GetString() == "Preview")
             throw new FlexOpsException("Approval required. Use PrepareLabelAsync, review the preview, then PurchaseLabelAsync.") { ErrorCode = "ApprovalRequired" };
         return response.Deserialize<Label>(new JsonSerializerOptions(JsonSerializerDefaults.Web));
@@ -119,7 +121,7 @@ public sealed class ShippingResource
         if (approval.SandboxLabel is not null) return approval.SandboxLabel;
         // Gateway decides expiry: a completed purchase remains replayable after its token expires.
         var response = await _client.PostAsync<JsonElement>("api/shipping/labels", JsonNode.Parse(approval.RequestJson), ct, approval.IdempotencyKey);
-        if (!response.TryGetProperty("trackingNumber", out var tracking) || string.IsNullOrWhiteSpace(tracking.GetString()))
+        if (response.ValueKind != JsonValueKind.Object || !response.TryGetProperty("trackingNumber", out var tracking) || string.IsNullOrWhiteSpace(tracking.GetString()))
             throw new FlexOpsException("Purchase outcome is unresolved. Retain this operation and reconcile before creating another label.") { ErrorCode = "OutcomeUnknown" };
         return response.Deserialize<Label>(new JsonSerializerOptions(JsonSerializerDefaults.Web));
     }
@@ -145,21 +147,30 @@ public sealed class ShippingResource
     // Address Validation
     // -----------------------------------------------------------------------
 
-    /// <summary>Validate and correct a shipping address.</summary>
-    /// <remarks>Sends the Gateway <c>AddressValidationRequest</c>: <c>{ "address": { ... } }</c>.</remarks>
-    public async Task<object?> ValidateAddressAsync(ShippingAddress address, CancellationToken ct = default)
+    /// <summary>Validate an address with the carriers (<c>POST api/addresses/validate</c>).</summary>
+    /// <remarks>
+    /// Needs the <c>shipping:read</c> scope. A result with <see cref="AddressValidationResult.ValidationUnavailable"/>
+    /// set means no carrier check completed; it does not reject the address.
+    /// </remarks>
+    public async Task<AddressValidationResult?> ValidateAddressAsync(AddressValidationRequest address, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(address);
-        return await _client.PostAsync<object>("api/shipping/addresses/validate", new { address }, ct);
+        return await _client.PostAsync<AddressValidationResult>("api/addresses/validate", address, ct);
     }
 
-    /// <summary>Validate and correct a shipping address using an untyped request payload.</summary>
-    /// <remarks>The payload is sent as given, so it must already be the Gateway
-    /// <c>AddressValidationRequest</c> (<c>new { address = ... }</c>). Prefer the
-    /// <see cref="ShippingAddress"/> overload, which wraps the address for you.</remarks>
-    public async Task<object?> ValidateAddressAsync(object address, CancellationToken ct = default)
+    /// <summary>Validate a <see cref="ShippingAddress"/>, sent as the Gateway's flat address (<c>line1</c>, <c>city</c>, <c>state</c>, ...).</summary>
+    public Task<AddressValidationResult?> ValidateAddressAsync(ShippingAddress address, CancellationToken ct = default)
     {
-        return await _client.PostAsync<object>("api/shipping/addresses/validate", address, ct);
+        ArgumentNullException.ThrowIfNull(address);
+        return ValidateAddressAsync(new AddressValidationRequest
+        {
+            Name = address.Name,
+            Line1 = address.AddressLine1,
+            City = address.City,
+            State = address.StateProvince,
+            PostalCode = address.PostalCode,
+            Country = address.CountryCode,
+        }, ct);
     }
 
     // -----------------------------------------------------------------------

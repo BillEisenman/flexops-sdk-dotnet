@@ -114,16 +114,24 @@ using (var packageBody = System.Text.Json.JsonDocument.Parse(hazmatHandler.Calls
 }
 Console.WriteLine("Return label package contract passed.");
 
-// Address validation sends the Gateway AddressValidationRequest: { "address": { ... } }.
+// Address validation uses the documented POST /api/addresses/validate with the flat Gateway
+// AddressValidationRequest (line1, city, state, postalCode, country), not the hidden /api/shipping route.
 await hazmatClient.Shipping.ValidateAddressAsync(Address("123 Main St"));
 using (var validation = System.Text.Json.JsonDocument.Parse(hazmatHandler.Calls[^1].Body))
 {
-    if (hazmatHandler.Calls[^1].Path != "/api/shipping/addresses/validate" ||
-        !validation.RootElement.TryGetProperty("address", out var wrapped) ||
-        wrapped.GetProperty("addressLine1").GetString() != "123 Main St" ||
-        wrapped.GetProperty("stateProvince").GetString() != "NY")
+    var root = validation.RootElement;
+    if (hazmatHandler.Calls[^1].Path != "/api/addresses/validate" ||
+        root.TryGetProperty("address", out _) ||
+        root.GetProperty("line1").GetString() != "123 Main St" ||
+        root.GetProperty("city").GetString() != "New York" ||
+        root.GetProperty("state").GetString() != "NY" ||
+        root.GetProperty("postalCode").GetString() != "10001" ||
+        root.GetProperty("country").GetString() != "US")
         throw new Exception($"Address validation contract failed: sent {hazmatHandler.Calls[^1].Body}");
 }
+var validated = await hazmatClient.Shipping.ValidateAddressAsync(new AddressValidationRequest { Line1 = "1 Main St", City = "Albany", PostalCode = "12207" });
+if (validated?.IsValid != true || hazmatHandler.Calls[^1].Body != """{"line1":"1 Main St","city":"Albany","postalCode":"12207","country":"US"}""")
+    throw new Exception($"Address validation request/result failed: sent {hazmatHandler.Calls[^1].Body}");
 Console.WriteLine("Address validation contract passed.");
 
 // Webhook signatures (flexops-sdk-node#41): the Gateway's {timestamp}.{body} HMAC with sha256= prefix.
@@ -131,6 +139,15 @@ WebhookSignatureChecks.Run();
 
 // Webhook subscriptions: events go out as the Gateway's comma-separated eventTypes (flexops-sdk-node#43).
 await WebhookSubscriptionChecks.RunAsync();
+
+// Idempotency-Key on every write, null for a 2xx with no body, Gateway error codes on every verb.
+await HttpPolicyChecks.RunAsync();
+
+// Routes, bodies and response shapes of the calls fixed or added for the documented Gateway API.
+await ResourceRouteChecks.RunAsync();
+
+// Every public resource method calls a documented Gateway operation; no writes through ApiProxy.
+await GatewayContractChecks.RunAsync();
 
 sealed class RecordingHandler : HttpMessageHandler
 {
