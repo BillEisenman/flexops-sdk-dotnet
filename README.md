@@ -17,8 +17,8 @@ using FlexOps.Sdk;
 
 using var client = new FlexOpsTypedClient(
     baseUrl: "https://gateway.flexops.io",
-    apiKey: "fxk_test_...",      // sandbox key — see below
-    workspaceId: "ws_abc123"
+    apiKey: "test_...",          // sandbox key — see below
+    workspaceId: "your-workspace-id"
 );
 
 // Rate shop across all connected carriers
@@ -207,8 +207,8 @@ Pass `tolerance:` to change the five-minute timestamp window.
 ```csharp
 using var client = new FlexOpsTypedClient(
     "https://gateway.flexops.io",
-    apiKey: "fxk_live_...",
-    workspaceId: "ws_abc123");
+    apiKey: "live_...",
+    workspaceId: "your-workspace-id");
 ```
 
 ### JWT bearer token
@@ -216,7 +216,7 @@ using var client = new FlexOpsTypedClient(
 ```csharp
 using var client = new FlexOpsTypedClient("https://gateway.flexops.io");
 client.SetAccessToken("eyJhbGciOi...");
-client.WorkspaceId = "ws_abc123";
+client.WorkspaceId = "your-workspace-id";
 ```
 
 ### Custom HttpClient
@@ -227,7 +227,7 @@ Useful for `IHttpClientFactory`, custom handlers (telemetry, retries), or DI:
 var httpClient = new HttpClient { BaseAddress = new Uri("https://gateway.flexops.io/") };
 using var client = new FlexOpsTypedClient(
     "https://gateway.flexops.io",
-    apiKey: "fxk_live_...",
+    apiKey: "live_...",
     httpClient: httpClient);
 ```
 
@@ -275,7 +275,7 @@ is not retryable either.
 
 ## Sandbox
 
-Use an `fxk_test_...` API key instead of `fxk_live_...` to hit the sandbox. Mock carriers respond, no real charges, no real labels — useful for CI, integration tests, and demos. Tracking numbers are prefixed `SBOX...` so you can tell them apart from production.
+Use a `test_...` API key instead of `live_...` to hit the sandbox. Mock carriers respond, no real charges, no real labels — useful for CI, integration tests, and demos. Tracking numbers are prefixed `SBOX...` so you can tell them apart from production.
 
 ## Advanced: lower-level HTTP client
 
@@ -284,8 +284,8 @@ Use an `fxk_test_...` API key instead of `fxk_live_...` to hit the sandbox. Mock
 ```csharp
 using var client = new FlexOpsClient(
     "https://gateway.flexops.io",
-    apiKey: "fxk_live_...",
-    workspaceId: "ws_abc123");
+    apiKey: "live_...",
+    workspaceId: "your-workspace-id");
 
 // Path helpers: WsPath() prefixes with /api/workspaces/{workspaceId}/
 var custom = await client.PostAsync<ApiResponse<MyType>>(
@@ -302,7 +302,7 @@ If you'd rather verify the API directly before wiring the SDK:
 ```bash
 # Rate shop
 curl -X POST https://gateway.flexops.io/api/shipping/rates \
-  -H "X-API-Key: fxk_test_..." \
+  -H "X-API-Key: test_..." \
   -H "Content-Type: application/json" \
   -d '{
     "origin": {"addressLine1": "123 Main St", "city": "New York", "stateProvince": "NY", "postalCode": "10001", "countryCode": "US"},
@@ -312,7 +312,7 @@ curl -X POST https://gateway.flexops.io/api/shipping/rates \
 
 # Buy a label (hazmatClassification 0 = not hazardous; required when there is no orderId)
 curl -X POST https://gateway.flexops.io/api/shipping/labels \
-  -H "X-API-Key: fxk_test_..." \
+  -H "X-API-Key: test_..." \
   -H "Content-Type: application/json" \
   -d '{
     "carrierCode": "USPS",
@@ -325,7 +325,7 @@ curl -X POST https://gateway.flexops.io/api/shipping/labels \
 
 # Track
 curl https://gateway.flexops.io/api/shipping/track/9400111899223456789012 \
-  -H "X-API-Key: fxk_test_..."
+  -H "X-API-Key: test_..."
 ```
 
 ## Requirements
