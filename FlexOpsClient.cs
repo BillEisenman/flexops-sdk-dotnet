@@ -42,8 +42,8 @@ namespace FlexOps.Sdk;
 /// <code>
 /// using FlexOps.Sdk;
 ///
-/// using var client = new FlexOpsClient("https://gateway.flexops.io", apiKey: "fxk_live_...");
-/// client.WorkspaceId = "ws_abc123";
+/// using var client = new FlexOpsClient("https://gateway.flexops.io", apiKey: "live_...");
+/// client.WorkspaceId = "your-workspace-id";
 ///
 /// var rates = await client.PostAsync&lt;RateShoppingResponse&gt;(
 ///     "api/shipping/rates",
