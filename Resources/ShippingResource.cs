@@ -217,8 +217,11 @@ public sealed class ShippingResource
     /// each box reports its own result. When no label was bought the Gateway answers 422 <c>AllPackagesFailed</c>, or
     /// 409 <c>OutcomeUnknown</c> when a box's carrier outcome is unknown and a label may exist: both throw a
     /// <see cref="FlexOpsException"/> whose <see cref="FlexOpsException.ResponseData"/> holds the per-box results. After
-    /// <c>OutcomeUnknown</c>, check the order before buying again. <see cref="MultiPackageShipmentRequest.HazmatClassification"/>
-    /// accepts only <see cref="HazmatClassification.None"/> or <c>null</c>.
+    /// <c>OutcomeUnknown</c>, check the order before buying again. <see cref="MultiPackageShipmentRequest.MaximumPostageAmount"/>
+    /// is required: the most the whole shipment may cost in USD. The Gateway refuses to buy any box that would take the
+    /// total above it (that box reports <c>PriceCeilingExceeded</c>; boxes after the ceiling is used up report
+    /// <c>PriceCeilingReached</c>), and a request without a valid one is 400 <c>ApprovalRequired</c>.
+    /// <see cref="MultiPackageShipmentRequest.HazmatClassification"/> accepts only <see cref="HazmatClassification.None"/> or <c>null</c>.
     /// </remarks>
     /// <exception cref="FlexOpsException">The Gateway refused the shipment or bought no label.</exception>
     public async Task<ApiResponse<MultiPackageShipmentResponse>?> CreateMultiPackageAsync(

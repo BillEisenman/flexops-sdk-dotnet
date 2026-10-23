@@ -138,6 +138,7 @@ static class ResourceRouteChecks
             CarrierCode = "USPS",
             ServiceCode = "PRIORITY",
             HazmatClassification = HazmatClassification.None,
+            MaximumPostageAmount = 25m,
             Packages =
             [
                 new MultiPackageDetail { WeightInOunces = 16, LengthInInches = 10, WidthInInches = 8, HeightInInches = 4, PackageReference = "Box 1 of 2" },
@@ -145,7 +146,7 @@ static class ResourceRouteChecks
             ],
         }, "order-15563627");
         Expect("multi-package", "POST", "/api/shipping/multi-package",
-            """{"orderId":15563627,"carrierCode":"USPS","serviceCode":"PRIORITY","hazmatClassification":0,"packages":[{"weightInOunces":16,"lengthInInches":10,"widthInInches":8,"heightInInches":4,"deliveryConfirmationRequired":false,"signatureConfirmationRequired":false,"insuranceCoverageRequested":false,"packageReference":"Box 1 of 2"},{"weightInOunces":8,"lengthInInches":6,"widthInInches":6,"heightInInches":6,"deliveryConfirmationRequired":false,"signatureConfirmationRequired":false,"insuranceCoverageRequested":true,"insuredValue":50}]}""");
+            """{"orderId":15563627,"carrierCode":"USPS","serviceCode":"PRIORITY","hazmatClassification":0,"maximumPostageAmount":25,"packages":[{"weightInOunces":16,"lengthInInches":10,"widthInInches":8,"heightInInches":4,"deliveryConfirmationRequired":false,"signatureConfirmationRequired":false,"insuranceCoverageRequested":false,"packageReference":"Box 1 of 2"},{"weightInOunces":8,"lengthInInches":6,"widthInInches":6,"heightInInches":6,"deliveryConfirmationRequired":false,"signatureConfirmationRequired":false,"insuranceCoverageRequested":true,"insuredValue":50}]}""");
         Check("multi-package keeps the caller's key", handler.Calls[^1].IdempotencyKey == "order-15563627", handler.Calls[^1].IdempotencyKey ?? "none");
         Check("multi-package response", shipment?.Data is { SuccessfulPackages: 2, Labels: [{ TrackingNumber: "9400-1" }, { TrackingNumber: "9400-2" }] });
 
@@ -157,6 +158,7 @@ static class ResourceRouteChecks
             {
                 OrderId = 1,
                 CarrierCode = "USPS",
+                MaximumPostageAmount = 25m,
                 Packages = [new MultiPackageDetail { WeightInOunces = 16, LengthInInches = 10, WidthInInches = 8, HeightInInches = 4 }],
             });
             failures.Add("multi-package 409: did not throw");

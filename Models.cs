@@ -1580,6 +1580,15 @@ public sealed class MultiPackageShipmentRequest
     /// </summary>
     public HazmatClassification? HazmatClassification { get; init; }
 
+    /// <summary>
+    /// The most the whole shipment may cost, in USD: required, positive, with at most two decimals. It covers the
+    /// postage of every box. The Gateway refuses to buy a box that would take the total above it, so you never pay
+    /// more: a box priced above what is left reports <c>PriceCeilingExceeded</c>, and once the amount is used up the
+    /// remaining boxes report <c>PriceCeilingReached</c> and are not bought. Boxes already bought stay bought. A
+    /// missing or invalid value is 400 <c>ApprovalRequired</c>.
+    /// </summary>
+    public required decimal MaximumPostageAmount { get; init; }
+
     /// <summary>The boxes, 1 to 99.</summary>
     public required List<MultiPackageDetail> Packages { get; init; }
 }
