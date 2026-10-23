@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-10-22
+
+3.1.0 adds multi-package labels and RMA reads, and corrects the returns `get` docs. Existing code keeps working.
+
 ### Added
 - `Shipping.CreateMultiPackageAsync(MultiPackageShipmentRequest, idempotencyKey, ct)` buys labels for one order shipped in 1 to 99 boxes (`POST /api/shipping/multi-package`). New `MultiPackageShipmentRequest`, `MultiPackageDetail`, `MultiPackageShipmentResponse` and `MultiPackageLabelResult` mirror the Gateway DTOs. `HazmatClassification` on the request accepts only `HazmatClassification.None` or `null`; the Gateway refuses any other class with 400 `HazmatNotSupported`.
 - `Returns.GetRmaAsync(rmaNumber)` and `Returns.ListRmasAsync(page, pageSize)` read return authorizations (`GET .../returns/rma/{rmaNumber}` and `GET .../returns/rma`). There was no way to read an RMA back after creating it.
