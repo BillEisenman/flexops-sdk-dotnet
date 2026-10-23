@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Docs: `Shipping.CreateBatchAsync`, `Shipping.PreviewBatchAsync` and
+  `Returns.GenerateLabelAsync(returnId, hazmatClassification)` now say that `hazmatClassification` accepts only `0`
+  (`HazmatClassification.None`) or nothing; the Gateway refuses any other class with 400 `HazmatNotSupported`.
+  `ReturnLabelRequest.HazmatClassification` already said so. No behavior change.
+
 ## [3.2.0] - 2026-10-22
 
 3.2.0 requires a maximum total price on multi-package labels: the Gateway refuses to buy a box that would take the shipment above it. It changes only the multi-package call released earlier today.

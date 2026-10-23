@@ -101,7 +101,8 @@ public sealed class ReturnsResource
 
     /// <summary>Generate a return label for an approved RMA with a declared HAZMAT class.</summary>
     /// <param name="returnId">The RMA number.</param>
-    /// <param name="hazmatClassification">What the parcel holds; <see cref="HazmatClassification.None"/> for no dangerous goods.</param>
+    /// <param name="hazmatClassification">What the parcel holds; <see cref="HazmatClassification.None"/> for no dangerous goods.
+    /// Return labels cannot carry HAZMAT yet, so any other class is refused (400 <c>HazmatNotSupported</c>).</param>
     /// <param name="ct">Cancellation token.</param>
     public async Task<ApiResponse<object>?> GenerateLabelAsync(string returnId, HazmatClassification hazmatClassification, CancellationToken ct = default)
     {
