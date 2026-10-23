@@ -1551,3 +1551,116 @@ public sealed class EmailTemplatePreview
     /// <summary>Rendered HTML body.</summary>
     public string RenderedHtmlBody { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// Body of <c>POST /api/shipping/multi-package</c> (the Gateway <c>MultiPackageShipmentRequest</c>): one order shipped in
+/// several boxes with the same carrier and service. The addresses come from the order.
+/// </summary>
+public sealed class MultiPackageShipmentRequest
+{
+    /// <summary>The order to ship. Required and positive.</summary>
+    public required long OrderId { get; init; }
+
+    /// <summary>Carrier for every box.</summary>
+    public required string CarrierCode { get; init; }
+
+    /// <summary>Service for every box.</summary>
+    public string? ServiceCode { get; init; }
+
+    /// <summary>Label format; the Gateway uses <c>PDF</c> when it is <c>null</c>.</summary>
+    public string? LabelFormat { get; init; }
+
+    /// <summary>Ship date; today when <c>null</c>.</summary>
+    public DateTime? ShipDate { get; init; }
+
+    /// <summary>
+    /// What the shipment holds. Multi-package labels cannot carry HAZMAT yet: send <see cref="HazmatClassification.None"/>
+    /// for no dangerous goods, or leave it <c>null</c> for no answer. The Gateway refuses any other class
+    /// (400 <c>HazmatNotSupported</c>); buy those labels one at a time.
+    /// </summary>
+    public HazmatClassification? HazmatClassification { get; init; }
+
+    /// <summary>The boxes, 1 to 99.</summary>
+    public required List<MultiPackageDetail> Packages { get; init; }
+}
+
+/// <summary>One box in a multi-package shipment (the Gateway <c>PackageDetail</c>).</summary>
+public sealed class MultiPackageDetail
+{
+    /// <summary>Weight in ounces, 0.1 to 999,999.</summary>
+    public required decimal WeightInOunces { get; init; }
+
+    /// <summary>Length in inches, 0.1 to 999.</summary>
+    public required decimal LengthInInches { get; init; }
+
+    /// <summary>Width in inches, 0.1 to 999.</summary>
+    public required decimal WidthInInches { get; init; }
+
+    /// <summary>Height in inches, 0.1 to 999.</summary>
+    public required decimal HeightInInches { get; init; }
+
+    /// <summary>Whether delivery confirmation is required.</summary>
+    public bool DeliveryConfirmationRequired { get; init; }
+
+    /// <summary>Whether a signature is required.</summary>
+    public bool SignatureConfirmationRequired { get; init; }
+
+    /// <summary>Whether to buy insurance for this box.</summary>
+    public bool InsuranceCoverageRequested { get; init; }
+
+    /// <summary>Coverage in USD. Needs <see cref="InsuranceCoverageRequested"/>; <c>null</c> insures the order value.</summary>
+    public decimal? InsuredValue { get; init; }
+
+    /// <summary>Your label for the box, up to 100 characters (for example <c>Box 1 of 3</c>).</summary>
+    public string? PackageReference { get; init; }
+}
+
+/// <summary>The Gateway <c>MultiPackageShipmentResponse</c>.</summary>
+public sealed class MultiPackageShipmentResponse
+{
+    /// <summary>The order.</summary>
+    public long OrderId { get; set; }
+
+    /// <summary>The carrier.</summary>
+    public string? CarrierCode { get; set; }
+
+    /// <summary>Boxes requested.</summary>
+    public int TotalPackages { get; set; }
+
+    /// <summary>Boxes that got a label.</summary>
+    public int SuccessfulPackages { get; set; }
+
+    /// <summary>Boxes that did not.</summary>
+    public int FailedPackages { get; set; }
+
+    /// <summary>Total cost of the labels bought.</summary>
+    public decimal TotalCost { get; set; }
+
+    /// <summary>One result per box.</summary>
+    public List<MultiPackageLabelResult> Labels { get; set; } = [];
+}
+
+/// <summary>One box's outcome (the Gateway <c>PackageLabelResult</c>).</summary>
+public sealed class MultiPackageLabelResult
+{
+    /// <summary>Index of the box in the request, from 0.</summary>
+    public int PackageIndex { get; set; }
+
+    /// <summary>The box's reference, as sent.</summary>
+    public string? PackageReference { get; set; }
+
+    /// <summary>Tracking number, when the label was bought.</summary>
+    public string? TrackingNumber { get; set; }
+
+    /// <summary>Label cost.</summary>
+    public decimal? Rate { get; set; }
+
+    /// <summary>Whether this box got a label.</summary>
+    public bool Success { get; set; }
+
+    /// <summary>Why it did not.</summary>
+    public string? ErrorMessage { get; set; }
+
+    /// <summary>Stable refusal code. <c>OutcomeUnknown</c> means a label may exist: check the order before retrying.</summary>
+    public string? ErrorCode { get; set; }
+}

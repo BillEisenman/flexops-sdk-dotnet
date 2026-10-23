@@ -20,7 +20,7 @@ public sealed class ReturnsResource
     /// <summary>Initializes a new instance of <see cref="ReturnsResource"/>.</summary>
     public ReturnsResource(FlexOpsClient client) => _client = client;
 
-    /// <summary>List returns created in a date range, one page at a time.</summary>
+    /// <summary>List received returns in a date range, one page at a time. To list return authorizations, use <see cref="ListRmasAsync"/>.</summary>
     /// <param name="startDate">Earliest creation date; the Gateway default applies when <c>null</c>.</param>
     /// <param name="endDate">Latest creation date; the Gateway default applies when <c>null</c>.</param>
     /// <param name="page">Page number, from 1.</param>
@@ -43,10 +43,42 @@ public sealed class ReturnsResource
         return await _client.GetAsync<ApiResponse<object[]>>(path, ct);
     }
 
-    /// <summary>Get a return authorization by ID.</summary>
+    /// <summary>Get a received return by its numeric return ID.</summary>
+    /// <param name="returnId">The numeric return ID (<c>returnId</c> on a listed return or an RMA).</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <remarks>An RMA number such as <c>RMA-1001</c> is not a return ID and matches no Gateway route; use <see cref="GetRmaAsync"/>.</remarks>
     public async Task<ApiResponse<object>?> GetAsync(string returnId, CancellationToken ct = default)
     {
         return await _client.GetAsync<ApiResponse<object>>(_client.WsPath($"returns/{returnId}"), ct);
+    }
+
+    /// <summary>Get a received return by its numeric return ID.</summary>
+    /// <param name="returnId">The numeric return ID.</param>
+    /// <param name="ct">Cancellation token.</param>
+    public Task<ApiResponse<object>?> GetAsync(long returnId, CancellationToken ct = default)
+        => GetAsync(returnId.ToString(CultureInfo.InvariantCulture), ct);
+
+    /// <summary>List return authorizations (RMAs), one page at a time.</summary>
+    /// <param name="page">Page number, from 1.</param>
+    /// <param name="pageSize">Items per page (1 to 100).</param>
+    /// <param name="ct">Cancellation token.</param>
+    public async Task<ApiResponse<object[]>?> ListRmasAsync(int page = 1, int pageSize = 25, CancellationToken ct = default)
+    {
+        var path = FlexOpsClient.WithQuery(_client.WsPath("returns/rma"),
+        [
+            new("page", page.ToString(CultureInfo.InvariantCulture)),
+            new("pageSize", pageSize.ToString(CultureInfo.InvariantCulture)),
+        ]);
+        return await _client.GetAsync<ApiResponse<object[]>>(path, ct);
+    }
+
+    /// <summary>Get a return authorization by its RMA number, for example <c>RMA-1001</c>.</summary>
+    /// <param name="rmaNumber">The RMA number.</param>
+    /// <param name="ct">Cancellation token.</param>
+    public async Task<ApiResponse<object>?> GetRmaAsync(string rmaNumber, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(rmaNumber);
+        return await _client.GetAsync<ApiResponse<object>>(_client.WsPath($"returns/rma/{Uri.EscapeDataString(rmaNumber)}"), ct);
     }
 
     /// <summary>Create a return authorization (RMA). The Gateway answers 201 with the RMA in the envelope.</summary>

@@ -300,6 +300,7 @@ public sealed class FlexOpsClient : IDisposable
         var message = $"Gateway returned HTTP {status}";
         string? code = null;
         string[]? errors = null;
+        JsonElement? data = null;
         try
         {
             var text = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
@@ -312,6 +313,10 @@ public sealed class FlexOpsClient : IDisposable
                     message = StringProperty(root, "message") ?? message;
                     code = StringProperty(root, "errorCode") ?? StringProperty(root, "code");
                     errors = ErrorList(root);
+                    if (root.TryGetProperty("data", out var envelopeData) && envelopeData.ValueKind != JsonValueKind.Null)
+                    {
+                        data = envelopeData.Clone();
+                    }
                 }
             }
         }
@@ -332,6 +337,7 @@ public sealed class FlexOpsClient : IDisposable
         error.StatusCode = status;
         error.ErrorCode = code;
         error.Errors = errors;
+        error.ResponseData = data;
         return error;
     }
 

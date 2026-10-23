@@ -204,6 +204,31 @@ public sealed class ShippingResource
     }
 
     // -----------------------------------------------------------------------
+    // Multi-Package Labels
+    // -----------------------------------------------------------------------
+
+    /// <summary>Buy labels for one order shipped in 1 to 99 boxes with the same carrier and service.</summary>
+    /// <param name="request">The order, carrier, service and boxes.</param>
+    /// <param name="idempotencyKey">Sent as <c>Idempotency-Key</c>; a new GUID when <c>null</c>. Reuse it to retry the same shipment.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The envelope when at least one label was bought; check <see cref="MultiPackageShipmentResponse.FailedPackages"/>.</returns>
+    /// <remarks>
+    /// Every box's label slot is reserved before any label is bought; a box that fails does not stop the others, and
+    /// each box reports its own result. When no label was bought the Gateway answers 422 <c>AllPackagesFailed</c>, or
+    /// 409 <c>OutcomeUnknown</c> when a box's carrier outcome is unknown and a label may exist: both throw a
+    /// <see cref="FlexOpsException"/> whose <see cref="FlexOpsException.ResponseData"/> holds the per-box results. After
+    /// <c>OutcomeUnknown</c>, check the order before buying again. <see cref="MultiPackageShipmentRequest.HazmatClassification"/>
+    /// accepts only <see cref="HazmatClassification.None"/> or <c>null</c>.
+    /// </remarks>
+    /// <exception cref="FlexOpsException">The Gateway refused the shipment or bought no label.</exception>
+    public async Task<ApiResponse<MultiPackageShipmentResponse>?> CreateMultiPackageAsync(
+        MultiPackageShipmentRequest request, string? idempotencyKey = null, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return await _client.PostAsync<ApiResponse<MultiPackageShipmentResponse>>("api/shipping/multi-package", request, ct, idempotencyKey);
+    }
+
+    // -----------------------------------------------------------------------
     // Carriers
     // -----------------------------------------------------------------------
 

@@ -250,6 +250,7 @@ static class GatewayContractChecks
         if (type == typeof(FileInsuranceClaimRequest)) return new FileInsuranceClaimRequest { PolicyId = Guid.NewGuid(), ClaimReason = "Lost", ClaimAmount = 10m };
         if (type == typeof(CreateRmaRequest)) return new CreateRmaRequest { OrderId = 1, Reason = "Damaged", Items = [new RmaItem { Sku = "SKU-1" }] };
         if (type == typeof(ReturnLabelRequest)) return new ReturnLabelRequest { WeightOz = 8, LengthIn = 6, WidthIn = 4, HeightIn = 2 };
+        if (type == typeof(MultiPackageShipmentRequest)) return new MultiPackageShipmentRequest { OrderId = 1, CarrierCode = "USPS", Packages = [new MultiPackageDetail { WeightInOunces = 16, LengthInInches = 10, WidthInInches = 8, HeightInInches = 4 }] };
         if (type == typeof(ReceiveRmaRequest)) return new ReceiveRmaRequest { RmaNumber = "RMA-1", InspectedItems = [new ReceivedRmaItem { PartNumber = "SKU-1", Quantity = 1 }] };
         if (type == typeof(CreateShippingRuleRequest)) return new CreateShippingRuleRequest { Name = "Rule", Conditions = [new RuleCondition { Field = "weightOz", Operator = "gt", Value = "1" }], Actions = [new RuleAction { Type = "setCarrier", Value = "USPS" }] };
         if (type == typeof(UpdateShippingRuleRequest)) return new UpdateShippingRuleRequest { IsEnabled = true };

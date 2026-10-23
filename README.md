@@ -66,6 +66,33 @@ var rma = await client.Returns.CreateAsync(new CreateRmaRequest
 // workspace's default shipping preset, and with no preset the API answers 400 PackageMeasurementsRequired.
 var returnLabel = await client.Returns.GenerateLabelAsync("RMA-1001",
     new ReturnLabelRequest { WeightOz = 16, LengthIn = 10, WidthIn = 8, HeightIn = 4 });
+
+// Read the RMA back by its number. Returns.GetAsync reads a *received* return by its numeric return ID.
+var current = await client.Returns.GetRmaAsync("RMA-1001");
+
+// One order in several boxes: one label per box, same carrier and service. Multi-package labels
+// cannot carry HAZMAT, so HazmatClassification is None or null.
+try
+{
+    var shipment = await client.Shipping.CreateMultiPackageAsync(new MultiPackageShipmentRequest
+    {
+        OrderId = 1042,
+        CarrierCode = "USPS",
+        ServiceCode = "PRIORITY",
+        HazmatClassification = HazmatClassification.None,
+        Packages =
+        [
+            new MultiPackageDetail { WeightInOunces = 16, LengthInInches = 10, WidthInInches = 8, HeightInInches = 4 },
+            new MultiPackageDetail { WeightInOunces = 8, LengthInInches = 6, WidthInInches = 6, HeightInInches = 6 },
+        ],
+    }, idempotencyKey: "order-1042-boxes");
+    // At least one label was bought; check each box (shipment.Data.Labels) and FailedPackages.
+}
+catch (FlexOpsException ex) when (ex.ErrorCode is "AllPackagesFailed" or "OutcomeUnknown")
+{
+    // No label was bought. ex.ResponseData holds the per-box results; after OutcomeUnknown a label
+    // may exist, so check the order before buying again.
+}
 ```
 
 ## Resources
@@ -76,7 +103,7 @@ The typed client exposes:
 | --- | --- |
 | `client.Auth` | Login, token refresh, logout (for operations that need a signed-in user) |
 | `client.Workspaces` | Your workspaces, members, invitations |
-| `client.Shipping` | Rates, labels, tracking, batch, address validation |
+| `client.Shipping` | Rates, labels, multi-package labels, tracking, batch, address validation |
 | `client.Carriers` | Carrier lookups (USPS, UPS, DHL); deprecated proxy writes (USPS, UPS, FedEx, DHL) |
 | `client.Webhooks` | Subscriptions, test deliveries, signature verification |
 | `client.Wallet` | Workspace wallet balance |
