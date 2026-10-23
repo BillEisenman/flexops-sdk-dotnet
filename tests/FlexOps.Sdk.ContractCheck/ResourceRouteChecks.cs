@@ -122,6 +122,52 @@ static class ResourceRouteChecks
         Expect("return receive", "POST", $"/api/workspaces/{Ws}/returns/42/receive",
             """{"rmaNumber":"RMA-7","warehouseId":3,"inspectedItems":[{"partNumber":"TS-1","quantity":2,"disposition":2}]}""");
 
+        // RMA reads: by RMA number and paged list on the RMA route; a received return by numeric return ID.
+        await client.Returns.GetRmaAsync("RMA-7");
+        Expect("rma get", "GET", $"/api/workspaces/{Ws}/returns/rma/RMA-7");
+        await client.Returns.ListRmasAsync(2, 50);
+        Expect("rma list", "GET", $"/api/workspaces/{Ws}/returns/rma?page=2&pageSize=50");
+        await client.Returns.GetAsync(42L);
+        Expect("return get by id", "GET", $"/api/workspaces/{Ws}/returns/42");
+
+        // Multi-package: POST /api/shipping/multi-package with the caller's key; HAZMAT 0 is sent, unset fields are not.
+        handler.Respond("""{"success":true,"data":{"orderId":15563627,"carrierCode":"USPS","totalPackages":2,"successfulPackages":2,"failedPackages":0,"totalCost":18.94,"labels":[{"packageIndex":0,"trackingNumber":"9400-1","rate":9.47,"success":true},{"packageIndex":1,"trackingNumber":"9400-2","rate":9.47,"success":true}]}}""");
+        var shipment = await client.Shipping.CreateMultiPackageAsync(new MultiPackageShipmentRequest
+        {
+            OrderId = 15563627,
+            CarrierCode = "USPS",
+            ServiceCode = "PRIORITY",
+            HazmatClassification = HazmatClassification.None,
+            Packages =
+            [
+                new MultiPackageDetail { WeightInOunces = 16, LengthInInches = 10, WidthInInches = 8, HeightInInches = 4, PackageReference = "Box 1 of 2" },
+                new MultiPackageDetail { WeightInOunces = 8, LengthInInches = 6, WidthInInches = 6, HeightInInches = 6, InsuranceCoverageRequested = true, InsuredValue = 50 },
+            ],
+        }, "order-15563627");
+        Expect("multi-package", "POST", "/api/shipping/multi-package",
+            """{"orderId":15563627,"carrierCode":"USPS","serviceCode":"PRIORITY","hazmatClassification":0,"packages":[{"weightInOunces":16,"lengthInInches":10,"widthInInches":8,"heightInInches":4,"deliveryConfirmationRequired":false,"signatureConfirmationRequired":false,"insuranceCoverageRequested":false,"packageReference":"Box 1 of 2"},{"weightInOunces":8,"lengthInInches":6,"widthInInches":6,"heightInInches":6,"deliveryConfirmationRequired":false,"signatureConfirmationRequired":false,"insuranceCoverageRequested":true,"insuredValue":50}]}""");
+        Check("multi-package keeps the caller's key", handler.Calls[^1].IdempotencyKey == "order-15563627", handler.Calls[^1].IdempotencyKey ?? "none");
+        Check("multi-package response", shipment?.Data is { SuccessfulPackages: 2, Labels: [{ TrackingNumber: "9400-1" }, { TrackingNumber: "9400-2" }] });
+
+        // No label confirmed and an unknown outcome: 409 OutcomeUnknown keeps the per-box results on the exception.
+        handler.Respond(HttpStatusCode.Conflict, """{"success":false,"message":"No label was confirmed","errorCode":"OutcomeUnknown","errors":["Package 0: unknown"],"data":{"orderId":1,"carrierCode":"USPS","totalPackages":1,"successfulPackages":0,"failedPackages":1,"totalCost":0,"labels":[{"packageIndex":0,"success":false,"errorCode":"OutcomeUnknown"}]}}""");
+        try
+        {
+            await client.Shipping.CreateMultiPackageAsync(new MultiPackageShipmentRequest
+            {
+                OrderId = 1,
+                CarrierCode = "USPS",
+                Packages = [new MultiPackageDetail { WeightInOunces = 16, LengthInInches = 10, WidthInInches = 8, HeightInInches = 4 }],
+            });
+            failures.Add("multi-package 409: did not throw");
+        }
+        catch (FlexOpsException ex)
+        {
+            var results = ex.ResponseData is { } data ? System.Text.Json.JsonSerializer.Deserialize<MultiPackageShipmentResponse>(data, System.Text.Json.JsonSerializerOptions.Web) : null;
+            Check("multi-package 409 code", ex is { StatusCode: 409, ErrorCode: "OutcomeUnknown" }, $"{ex.StatusCode} {ex.ErrorCode}");
+            Check("multi-package 409 keeps the per-box results", results?.Labels is [{ PackageIndex: 0, Success: false, ErrorCode: "OutcomeUnknown" }], ex.ResponseData?.ToString() ?? "null");
+        }
+
         // Shipping rules.
         var ruleId = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
         await client.Rules.CreateAsync(new CreateShippingRuleRequest
@@ -391,6 +437,8 @@ static class ResourceRouteChecks
         public List<(string Method, string PathAndQuery, string Body, string? WorkspaceHeader, string? IdempotencyKey, string? Authorization)> Calls { get; } = [];
 
         public void Respond(string body) => _replies.Enqueue((HttpStatusCode.OK, body));
+
+        public void Respond(HttpStatusCode status, string body) => _replies.Enqueue((status, body));
 
         public void RespondNoContent() => _replies.Enqueue((HttpStatusCode.NoContent, null));
 

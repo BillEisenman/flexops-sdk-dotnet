@@ -6,6 +6,8 @@
 // Copyright (c) 2021-2026 by FlexOps, LLC. All rights reserved.
 // ***********************************************************************
 
+using System.Text.Json;
+
 namespace FlexOps.Sdk;
 
 /// <summary>
@@ -21,6 +23,13 @@ public class FlexOpsException : Exception
 
     /// <summary>Validation or detail error messages.</summary>
     public string[]? Errors { get; set; }
+
+    /// <summary>
+    /// The envelope's <c>data</c> on an error reply, when the Gateway sends one. A multi-package 422
+    /// <c>AllPackagesFailed</c> or 409 <c>OutcomeUnknown</c> carries the per-box results here; read them with
+    /// <c>JsonSerializer.Deserialize&lt;MultiPackageShipmentResponse&gt;(ResponseData.Value, JsonSerializerOptions.Web)</c>.
+    /// </summary>
+    public JsonElement? ResponseData { get; set; }
 
     /// <summary>Initializes a new instance of <see cref="FlexOpsException"/>.</summary>
     public FlexOpsException() { }

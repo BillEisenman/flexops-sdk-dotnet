@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `Shipping.CreateMultiPackageAsync(MultiPackageShipmentRequest, idempotencyKey, ct)` buys labels for one order shipped in 1 to 99 boxes (`POST /api/shipping/multi-package`). New `MultiPackageShipmentRequest`, `MultiPackageDetail`, `MultiPackageShipmentResponse` and `MultiPackageLabelResult` mirror the Gateway DTOs. `HazmatClassification` on the request accepts only `HazmatClassification.None` or `null`; the Gateway refuses any other class with 400 `HazmatNotSupported`.
+- `Returns.GetRmaAsync(rmaNumber)` and `Returns.ListRmasAsync(page, pageSize)` read return authorizations (`GET .../returns/rma/{rmaNumber}` and `GET .../returns/rma`). There was no way to read an RMA back after creating it.
+- `Returns.GetAsync(long returnId)`.
+- `FlexOpsException.ResponseData` carries the envelope's `data` on an error reply. A multi-package 422 `AllPackagesFailed` or 409 `OutcomeUnknown` puts the per-box results there.
+
+### Fixed
+- `Returns.GetAsync` is documented as reading a received return by numeric return ID. It said it read a return authorization by ID, but an RMA number such as `RMA-1001` matches no Gateway route; use `GetRmaAsync`. `Returns.ListAsync` is documented as listing received returns.
+
 ## [3.0.0] - 2026-10-19
 
 ### Removed (breaking)
