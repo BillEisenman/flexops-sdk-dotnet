@@ -179,13 +179,19 @@ public sealed class ShippingResource
 
     /// <summary>Create labels in batch.</summary>
     /// <remarks>The payload is sent as given. Set <c>hazmatClassification</c> (a
-    /// <see cref="HazmatClassification"/> number) on an item only when you have a declaration; the SDK never adds one.</remarks>
+    /// <see cref="HazmatClassification"/> number) on an item only when you have a declaration; the SDK never adds one.
+    /// Batch labels cannot carry HAZMAT yet: an item's <c>hazmatClassification</c> accepts only <c>0</c>
+    /// (<see cref="HazmatClassification.None"/>) or nothing, and the Gateway refuses any other class with 400
+    /// <c>HazmatNotSupported</c>. Buy HAZMAT labels one at a time with <see cref="CreateLabelAsync(object, CancellationToken)"/>.</remarks>
     public async Task<ApiResponse<object>?> CreateBatchAsync(object request, CancellationToken ct = default)
     {
         return await _client.PostAsync<ApiResponse<object>>(_client.WsPath("labels/batch"), request, ct);
     }
 
     /// <summary>Preview a batch without purchasing (dry-run).</summary>
+    /// <remarks>The payload is sent as given. As with <see cref="CreateBatchAsync(object, CancellationToken)"/>, an item's
+    /// <c>hazmatClassification</c> accepts only <c>0</c> (<see cref="HazmatClassification.None"/>) or nothing
+    /// (any other class is 400 <c>HazmatNotSupported</c>).</remarks>
     public async Task<ApiResponse<object>?> PreviewBatchAsync(object request, CancellationToken ct = default)
     {
         return await _client.PostAsync<ApiResponse<object>>(_client.WsPath("labels/batch/preview"), request, ct);
