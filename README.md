@@ -71,7 +71,8 @@ var returnLabel = await client.Returns.GenerateLabelAsync("RMA-1001",
 var current = await client.Returns.GetRmaAsync("RMA-1001");
 
 // One order in several boxes: one label per box, same carrier and service. Multi-package labels
-// cannot carry HAZMAT, so HazmatClassification is None or null.
+// cannot carry HAZMAT, so HazmatClassification is None or null. MaximumPostageAmount is required: the
+// most the whole shipment may cost in USD. The Gateway will not buy a box that takes the total above it.
 try
 {
     var shipment = await client.Shipping.CreateMultiPackageAsync(new MultiPackageShipmentRequest
@@ -80,6 +81,7 @@ try
         CarrierCode = "USPS",
         ServiceCode = "PRIORITY",
         HazmatClassification = HazmatClassification.None,
+        MaximumPostageAmount = 25m,
         Packages =
         [
             new MultiPackageDetail { WeightInOunces = 16, LengthInInches = 10, WidthInInches = 8, HeightInInches = 4 },
