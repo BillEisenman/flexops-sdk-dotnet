@@ -1159,6 +1159,72 @@ public sealed record CreateScanFormRequest
     public int? WarehouseId { get; init; }
 }
 
+/// <summary>Values of <see cref="ScanForm.State"/>. The Gateway may add others; treat them like <see cref="OutcomeUnknown"/>.</summary>
+public static class ScanFormStates
+{
+    /// <summary>USPS returned the manifest, and the Gateway saved its number and PDF.</summary>
+    public const string Created = "Created";
+
+    /// <summary>
+    /// The carrier's answer was lost or did not match. The packages stay reserved: do not submit them again until the
+    /// outcome is resolved.
+    /// </summary>
+    public const string OutcomeUnknown = "OutcomeUnknown";
+}
+
+/// <summary>
+/// A SCAN form (USPS PS Form 5630 manifest) as the Gateway returns it from <c>POST</c>, <c>GET</c> and
+/// <c>GET {scanFormId}</c> under <c>/api/workspaces/{workspaceId}/scan-forms</c>.
+/// </summary>
+public sealed record ScanForm
+{
+    /// <summary>The form's ID: 32 hexadecimal digits, no dashes. Pass it to <see cref="Resources.ScanFormsResource.GetFormAsync"/>.</summary>
+    public string ScanFormId { get; init; } = string.Empty;
+
+    /// <summary>Where the operation stands; see <see cref="ScanFormStates"/>.</summary>
+    public string State { get; init; } = string.Empty;
+
+    /// <summary>The origin ZIP the packages ship from, or null when none was recorded.</summary>
+    public string? OriginPostalCode { get; init; }
+
+    /// <summary>The packages on the form, in ordinal order.</summary>
+    public IReadOnlyList<string> TrackingNumbers { get; init; } = [];
+
+    /// <summary>When the operation was recorded (UTC).</summary>
+    public DateTimeOffset CreatedAtUtc { get; init; }
+
+    /// <summary>
+    /// The PS Form 5630 PDF, base64-encoded. Null when no PDF was saved: sandbox forms are never sent to USPS, and an
+    /// operation whose outcome is unknown has none. <see cref="GetPdfBytes"/> decodes it.
+    /// </summary>
+    public string? ScanFormImage { get; init; }
+
+    /// <summary>The USPS manifest number. <c>SBOX…</c> in the sandbox; empty while the outcome is unknown.</summary>
+    public string? ManifestNumber { get; init; }
+
+    /// <summary>The mailing date (the Gateway sends a date at midnight with no zone).</summary>
+    public DateTime? ManifestDate { get; init; }
+
+    /// <summary>How many packages the form covers.</summary>
+    public int PackageCount { get; init; }
+
+    /// <summary>A status line for people, for example <c>Created — USPS acceptance requires a carrier scan.</c></summary>
+    public string? StatusMessage { get; init; }
+
+    /// <summary>True when <see cref="State"/> is <see cref="ScanFormStates.Created"/>.</summary>
+    public bool Success { get; init; }
+
+    /// <summary>Not set by the current Gateway; a refused request throws <see cref="FlexOpsException"/> instead.</summary>
+    public string? ErrorMessage { get; init; }
+
+    /// <summary>True for a sandbox (test key) form, which is never transmitted to USPS.</summary>
+    public bool IsSandbox { get; init; }
+
+    /// <summary>Decodes <see cref="ScanFormImage"/>, or returns null when the form has no PDF.</summary>
+    /// <returns>The PDF bytes, or null.</returns>
+    public byte[]? GetPdfBytes() => ScanFormImage is null ? null : Convert.FromBase64String(ScanFormImage);
+}
+
 /// <summary>Body of <c>POST /api/workspaces/{workspaceId}/carbon-offsets/quote</c>.</summary>
 public sealed class CarbonOffsetQuoteRequest
 {
