@@ -112,8 +112,8 @@ The typed client exposes:
 | `client.Insurance` | Quotes, policies, claims |
 | `client.Returns` | RMAs, return labels, receiving |
 | `client.Analytics` | Shipments, carriers, orders, returns |
-| `client.Orders` | Read-only order lookups via the VisionSuite proxy |
-| `client.Inventory` | Read-only inventory lookups via the VisionSuite proxy |
+| `client.Orders` | Read-only order lookups via the VisionSuite proxy (API keys need `orders:read`) |
+| `client.Inventory` | Read-only inventory lookups via the VisionSuite proxy (API keys need `inventory:read`) |
 | `client.Pickups` | Carrier pickup scheduling |
 | `client.ScanForms` | USPS scan form / manifest management |
 | `client.Rules` | Shipping automation rules, including dry-run tests |
@@ -126,6 +126,11 @@ The typed client exposes:
 The SDK covers the documented public Gateway API. Account, API-key and billing management live in the FlexOps
 portal. Orders and inventory are read-only lookups through the legacy VisionSuite proxy, which refuses writes from
 API keys.
+
+Reads through the proxy need the API key permission for the data they read: `orders:read` for `client.Orders`,
+`inventory:read` for `client.Inventory`, and for `client.Analytics` the permission named on each method
+(`shipping:read`, `inventory:read`, `orders:read` or `returns:read`). A key without the permission gets 403
+`API_KEY_SCOPE_REQUIRED` with `requiredScopes`. Keys created with the default permissions have all of these.
 
 `RecurringShipments`, `ReportSchedules` and `EmailTemplates` reads work with any API key or a user token. Their
 writes (create, update, delete, pause, resume, trigger, toggle, upsert, and email-template preview) need a user token
@@ -289,6 +294,9 @@ is not retryable either.
 - **Lookups (GET)** work with API keys: USPS address, ZIP and city lookups, tracking, delivery standards and
   locations; UPS tracking; DHL address validation, rates, products, tracking, proof of delivery, reference data and
   service points. Pass parameters as an `IReadOnlyDictionary<string, string>`; they go in the query string.
+  The key needs the permission for the data: `shipping:read` for address, ZIP, city, location, service point and
+  reference lookups; `tracking:read` for tracking and proof of delivery; `rates:read` for delivery standards, rates
+  and products. Without it the Gateway returns 403 `API_KEY_SCOPE_REQUIRED`.
 - **Writes (POST, PUT, DELETE)** are `[Obsolete]`. They need a user token (API keys get 403 `API_KEY_SCOPE_REQUIRED`)
   and stop working when the proxy is retired on 2027-06-30. The proxy's label routes already answer 410 Gone, so the
   SDK has no proxy label methods. Native replacements:

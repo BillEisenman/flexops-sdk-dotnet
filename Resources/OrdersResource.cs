@@ -12,6 +12,10 @@ namespace FlexOps.Sdk.Resources;
 /// Read-only order lookups via the VisionSuite API proxy (V1 Order endpoints). The proxy refuses writes from API keys.
 /// All methods proxy through <c>/api/ApiProxy/api/v1/Order/...</c>.
 /// </summary>
+/// <remarks>
+/// With an API key, every method requires the <c>orders:read</c> permission; a key without it gets 403
+/// <c>API_KEY_SCOPE_REQUIRED</c>. Keys created with the default permissions include <c>orders:read</c>.
+/// </remarks>
 public sealed class OrdersResource
 {
     private readonly FlexOpsClient _client;
