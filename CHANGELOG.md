@@ -7,7 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `ScanForms.CreateAsync(CreateScanFormRequest)` with the Gateway's SCAN form request fields: `TrackingNumbers`,
+  `ManifestDate` (`DateOnly`, sent as `yyyy-MM-dd`), `RequestId`, `OriginPostalCode` and `WarehouseId`. Live creation
+  needs `ManifestDate`: without it the Gateway answers 400 `Choose the label mailing date.` It stays optional because
+  the sandbox defaults it to today. The overload sends your `RequestId`, or a new one for the call, so a retrying
+  handler resends the same ID and the Gateway returns the same form instead of creating a second one. Reusing an ID
+  with different inputs is 409. `CreateAsync(object)` is unchanged and sends its body as is.
+
 ### Changed
+- Docs: `Pickups.ScheduleAsync`/`CancelAsync` and `ScanForms.CreateAsync` need `shipping:write` with an API key, and
+  the public demo keys cannot use them. `Rules.TestAsync` needs `shipping:read`. Shipping rule changes
+  (`Rules.CreateAsync`, `UpdateAsync`, `DeleteAsync`, `ReorderAsync`) and member changes
+  (`Workspaces.InviteMemberAsync`, `RemoveMemberAsync`, `UpdateMemberRoleAsync`) are for signed-in users only: API
+  keys get 403 `SIGNED_IN_USER_REQUIRED`.
 - Docs: `Shipping.CreateBatchAsync`, `Shipping.PreviewBatchAsync` and
   `Returns.GenerateLabelAsync(returnId, hazmatClassification)` now say that `hazmatClassification` accepts only `0`
   (`HazmatClassification.None`) or nothing; the Gateway refuses any other class with 400 `HazmatNotSupported`.

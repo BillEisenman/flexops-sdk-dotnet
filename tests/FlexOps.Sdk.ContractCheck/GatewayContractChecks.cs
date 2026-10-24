@@ -255,6 +255,7 @@ static class GatewayContractChecks
         if (type == typeof(CreateShippingRuleRequest)) return new CreateShippingRuleRequest { Name = "Rule", Conditions = [new RuleCondition { Field = "weightOz", Operator = "gt", Value = "1" }], Actions = [new RuleAction { Type = "setCarrier", Value = "USPS" }] };
         if (type == typeof(UpdateShippingRuleRequest)) return new UpdateShippingRuleRequest { IsEnabled = true };
         if (type == typeof(TestShippingRuleRequest)) return new TestShippingRuleRequest { WeightOz = 16 };
+        if (type == typeof(CreateScanFormRequest)) return new CreateScanFormRequest { TrackingNumbers = ["9400"], ManifestDate = new DateOnly(2026, 10, 1) };
         if (type == typeof(SchedulePickupRequest)) return new SchedulePickupRequest { CarrierCode = "usps", PickupDate = DateTime.UtcNow.Date, Street = "1 Main St", City = "New York", State = "NY", PostalCode = "10001" };
         if (type == typeof(LandedCostRequest)) return new LandedCostRequest { DestinationCountry = "GB", Items = [new CustomsItem { Description = "Shirt", Quantity = 1, OriginCountry = "US" }] };
         if (type == typeof(CarbonOffsetQuoteRequest)) return new CarbonOffsetQuoteRequest { WeightLbs = 1m, DistanceMiles = 100m };

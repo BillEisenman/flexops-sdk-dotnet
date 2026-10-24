@@ -37,7 +37,7 @@ public sealed class WorkspacesResource
         return await _client.GetAsync<ApiResponse<WorkspaceMemberList>>(_client.WsPath("members"), ct);
     }
 
-    /// <summary>Invite a user to the workspace.</summary>
+    /// <summary>Invite a user to the workspace. Signed-in users only: API keys get 403 <c>SIGNED_IN_USER_REQUIRED</c>, whatever their scopes.</summary>
     /// <param name="email">The invitee's email address.</param>
     /// <param name="role">The role granted on acceptance; sent as the Gateway <c>WorkspaceRole</c> number.</param>
     /// <param name="ct">Cancellation token.</param>
@@ -49,13 +49,15 @@ public sealed class WorkspacesResource
             ct);
     }
 
-    /// <summary>Remove a member from the workspace. Returns <c>null</c> (204 No Content) on success.</summary>
+    /// <summary>
+    /// Remove a member from the workspace. Returns <c>null</c> (204 No Content) on success. Signed-in users only: API keys get 403 <c>SIGNED_IN_USER_REQUIRED</c>, whatever their scopes.
+    /// </summary>
     public async Task<ApiResponse<object>?> RemoveMemberAsync(string userId, CancellationToken ct = default)
     {
         return await _client.DeleteAsync<ApiResponse<object>>(_client.WsPath($"members/{userId}"), ct);
     }
 
-    /// <summary>Change a member's role.</summary>
+    /// <summary>Change a member's role. Signed-in users only: API keys get 403 <c>SIGNED_IN_USER_REQUIRED</c>, whatever their scopes.</summary>
     /// <param name="userId">The member's user ID (<see cref="WorkspaceMember.UserId"/>).</param>
     /// <param name="newRole">The new role; sent as the Gateway <c>WorkspaceRole</c> number.</param>
     /// <param name="ct">Cancellation token.</param>

@@ -193,6 +193,37 @@ static class ResourceRouteChecks
         Expect("rule delete", "DELETE", $"/api/workspaces/{Ws}/shipping-rules/{ruleId}");
         Check("rule delete 204 is null", deletedRule is null);
 
+        // SCAN forms: the Gateway's field names, the caller's requestId as is, otherwise a new one per call.
+        var requestId = Guid.Parse("634648d2-7368-4317-a487-c7b71ba55bb1");
+        await client.ScanForms.CreateAsync(new CreateScanFormRequest
+        {
+            TrackingNumbers = ["9400111899223456789014"],
+            ManifestDate = new DateOnly(2026, 9, 8),
+            RequestId = requestId,
+            OriginPostalCode = "10001",
+            WarehouseId = 7,
+        });
+        Expect("scan form create", "POST", $"/api/workspaces/{Ws}/scan-forms",
+            """{"trackingNumbers":["9400111899223456789014"],"manifestDate":"2026-09-08","requestId":"634648d2-7368-4317-a487-c7b71ba55bb1","originPostalCode":"10001","warehouseId":7}""");
+        var minimal = new CreateScanFormRequest { TrackingNumbers = ["9400"], ManifestDate = new DateOnly(2026, 9, 8) };
+        await client.ScanForms.CreateAsync(minimal);
+        var firstId = RequestIdOf(handler.Calls[^1].Body);
+        await client.ScanForms.CreateAsync(minimal);
+        var secondId = RequestIdOf(handler.Calls[^1].Body);
+        Check("scan form generates a requestId", firstId != Guid.Empty && secondId != Guid.Empty, $"{firstId} {secondId}");
+        Check("scan form requestId is new per call", firstId != secondId, $"{firstId}");
+        Check("scan form leaves the caller's request unchanged", minimal.RequestId is null);
+        var flaky = new RouteHandler();
+        flaky.Respond(HttpStatusCode.ServiceUnavailable, """{"errorCode":"SERVICE_UNAVAILABLE"}""");
+        flaky.Respond("""{"success":true,"data":null}""");
+        using (var retryingHttp = new HttpClient(new RetryOn503Handler(flaky)) { BaseAddress = new Uri("https://example.test/") })
+        using (var retrying = new FlexOpsTypedClient("https://example.test", apiKey: "test-key", workspaceId: Ws, httpClient: retryingHttp))
+        {
+            await retrying.ScanForms.CreateAsync(minimal);
+            var ids = flaky.Calls.Select(c => RequestIdOf(c.Body)).ToList();
+            Check("scan form retry resends its requestId", ids.Count == 2 && ids[0] != Guid.Empty && ids[0] == ids[1], string.Join(", ", ids));
+        }
+
         // Pickups.
         await client.Pickups.ScheduleAsync(new SchedulePickupRequest
         {
@@ -432,6 +463,26 @@ static class ResourceRouteChecks
     }
 
     /// <summary>Records each request and answers with the next queued body, or an empty success envelope.</summary>
+    /// <summary>The <c>requestId</c> of a JSON body, or <see cref="Guid.Empty"/> when it has none.</summary>
+    static Guid RequestIdOf(string body) =>
+        System.Text.Json.JsonDocument.Parse(body).RootElement.TryGetProperty("requestId", out var id) ? id.GetGuid() : Guid.Empty;
+
+    /// <summary>What a caller's resilience handler does: resend the same request once after a 503.</summary>
+    sealed class RetryOn503Handler(HttpMessageHandler inner) : DelegatingHandler(inner)
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            var response = await base.SendAsync(request, ct);
+            if (response.StatusCode != HttpStatusCode.ServiceUnavailable)
+            {
+                return response;
+            }
+
+            response.Dispose();
+            return await base.SendAsync(request, ct);
+        }
+    }
+
     sealed class RouteHandler : HttpMessageHandler
     {
         readonly Queue<(HttpStatusCode Status, string? Body)> _replies = new();
