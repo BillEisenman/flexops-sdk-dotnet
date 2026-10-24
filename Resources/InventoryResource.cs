@@ -11,6 +11,10 @@ namespace FlexOps.Sdk.Resources;
 /// <summary>
 /// Read-only inventory lookups via the VisionSuite API proxy. The proxy refuses writes from API keys.
 /// </summary>
+/// <remarks>
+/// With an API key, every method requires the <c>inventory:read</c> permission; a key without it gets 403
+/// <c>API_KEY_SCOPE_REQUIRED</c>. Keys created with the default permissions include <c>inventory:read</c>.
+/// </remarks>
 public sealed class InventoryResource
 {
     private readonly FlexOpsClient _client;
