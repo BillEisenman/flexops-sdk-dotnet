@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `Returns.GenerateLabelAsync(returnId, hazmatClassification)` now say that `hazmatClassification` accepts only `0`
   (`HazmatClassification.None`) or nothing; the Gateway refuses any other class with 400 `HazmatNotSupported`.
   `ReturnLabelRequest.HazmatClassification` already said so. No behavior change.
+- Docs: every `Webhooks` method that calls the Gateway (`ListAsync`, both `CreateAsync` and `UpdateAsync`
+  overloads, `DeleteAsync`, `RotateSecretAsync`, `TestAsync` and `ListDeliveryLogsAsync`), the resource and the
+  README now say it needs a signed-in user's access token. The Gateway refuses API keys on every webhook route,
+  reads included, with 403 `SIGNED_IN_USER_REQUIRED` (`FlexOpsAuthException`), whatever the key's scopes; reads are
+  refused because webhook delivery logs carry each delivery's payload (order and customer data). A client
+  constructed with an API key sends only the key. The README webhook example now signs in first.
+  `VerifySignature` needs no credentials. No behavior change.
 
 ## [3.2.0] - 2026-10-22
 

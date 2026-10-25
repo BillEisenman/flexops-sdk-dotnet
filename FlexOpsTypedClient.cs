@@ -54,7 +54,10 @@ public sealed class FlexOpsTypedClient : IDisposable
     /// <summary>Carrier-specific lookups (USPS, UPS, DHL) and deprecated legacy proxy writes (USPS, UPS, FedEx, DHL).</summary>
     public CarriersResource Carriers { get; }
 
-    /// <summary>Webhook subscription management and signature verification.</summary>
+    /// <summary>
+    /// Webhook subscription management and signature verification. Managing subscriptions needs a signed-in
+    /// user's access token; API keys get 403 <c>SIGNED_IN_USER_REQUIRED</c>.
+    /// </summary>
     public WebhooksResource Webhooks { get; }
 
     /// <summary>Wallet balance of the configured workspace.</summary>
