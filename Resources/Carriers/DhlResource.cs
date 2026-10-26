@@ -13,7 +13,10 @@ namespace FlexOps.Sdk.Resources.Carriers;
 /// string, and deprecated proxy writes.
 /// </summary>
 /// <remarks>
-/// The lookups work with API keys. The <see cref="ObsoleteAttribute">obsolete</see> writes need a user token (API
+/// The lookups work with API keys that have the permission for the data they read: address validation, service
+/// points and reference data require <c>shipping:read</c>; tracking and proof of delivery require
+/// <c>tracking:read</c>; rates and products require <c>rates:read</c> (otherwise 403
+/// <c>API_KEY_SCOPE_REQUIRED</c>). The <see cref="ObsoleteAttribute">obsolete</see> writes need a user token (API
 /// keys get 403 <c>API_KEY_SCOPE_REQUIRED</c>) and stop working when the proxy is retired on 2027-06-30; use
 /// <see cref="ShippingResource"/> for rates and labels and <see cref="PickupsResource"/> for pickups. The proxy
 /// shipment route is closed (410 Gone), and there is no pickup update (the proxy has no PATCH).

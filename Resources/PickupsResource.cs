@@ -18,7 +18,7 @@ public sealed class PickupsResource
     /// <summary>Initializes a new instance of <see cref="PickupsResource"/>.</summary>
     public PickupsResource(FlexOpsClient client) => _client = client;
 
-    /// <summary>Schedule a carrier pickup.</summary>
+    /// <summary>Schedule a carrier pickup. API keys need <c>shipping:write</c>; the public demo keys are refused.</summary>
     public async Task<ApiResponse<object>?> ScheduleAsync(SchedulePickupRequest request, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -41,7 +41,7 @@ public sealed class PickupsResource
             FlexOpsClient.WithQuery(_client.WsPath($"pickups/{Uri.EscapeDataString(pickupId)}"), [new("carrierCode", carrierCode)]), ct);
     }
 
-    /// <summary>Cancel a scheduled pickup.</summary>
+    /// <summary>Cancel a scheduled pickup. API keys need <c>shipping:write</c>; the public demo keys are refused.</summary>
     /// <param name="pickupId">The carrier's pickup confirmation number.</param>
     /// <param name="carrierCode">The pickup's carrier. The Gateway defaults to <c>usps</c>.</param>
     /// <param name="ct">Cancellation token.</param>

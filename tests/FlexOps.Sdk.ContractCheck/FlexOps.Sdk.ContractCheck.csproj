@@ -16,5 +16,7 @@
     <!-- Documented Gateway operations from the Developer Docs OpenAPI snapshot (FlexOpsDeveloperDocs static/openapi/gateway.json);
          refresh by regenerating the sorted "METHOD /path" list when that snapshot changes. -->
     <None Include="Fixtures/gateway-operations.json" CopyToOutputDirectory="PreserveNewest" />
+    <!-- SCAN form replies as the Gateway writes them (ScanFormsController, ScanFormDto). -->
+    <None Include="Fixtures/scan-forms.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

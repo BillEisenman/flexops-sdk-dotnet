@@ -69,13 +69,13 @@ public sealed class FlexOpsTypedClient : IDisposable
     /// <summary>Return authorization (RMA) management.</summary>
     public ReturnsResource Returns { get; }
 
-    /// <summary>Analytics (shipments, carriers, orders, returns).</summary>
+    /// <summary>Analytics (shipments, carriers, orders, returns); API keys need each method's read permission.</summary>
     public AnalyticsResource Analytics { get; }
 
-    /// <summary>Read-only order lookups via the VisionSuite proxy.</summary>
+    /// <summary>Read-only order lookups via the VisionSuite proxy; API keys need <c>orders:read</c>.</summary>
     public OrdersResource Orders { get; }
 
-    /// <summary>Read-only inventory lookups via the VisionSuite proxy.</summary>
+    /// <summary>Read-only inventory lookups via the VisionSuite proxy; API keys need <c>inventory:read</c>.</summary>
     public InventoryResource Inventory { get; }
 
     /// <summary>Carrier pickup scheduling.</summary>
