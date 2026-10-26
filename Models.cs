@@ -1132,6 +1132,33 @@ public sealed class SchedulePickupRequest
     public string? ContactPhone { get; init; }
 }
 
+/// <summary>Body of <c>POST /api/workspaces/{workspaceId}/scan-forms</c>.</summary>
+public sealed record CreateScanFormRequest
+{
+    /// <summary>Tracking numbers of the labels to put on the form: 1 to 1,000.</summary>
+    public required IReadOnlyList<string> TrackingNumbers { get; init; }
+
+    /// <summary>
+    /// The labels' mailing date. Live creation needs it: without it the Gateway answers 400
+    /// <c>Choose the label mailing date.</c> The sandbox defaults it to today (UTC), which is why it is optional here.
+    /// </summary>
+    public DateOnly? ManifestDate { get; init; }
+
+    /// <summary>
+    /// Identifies the operation. Repeating a request with the same ID returns the same form instead of creating
+    /// another; reusing it with different inputs is 409. When <c>null</c>,
+    /// <see cref="Resources.ScanFormsResource.CreateAsync(CreateScanFormRequest, CancellationToken)"/> generates one
+    /// for the call. Set it yourself to retry the call after an unknown outcome.
+    /// </summary>
+    public Guid? RequestId { get; init; }
+
+    /// <summary>The origin ZIP group to manifest. Every selected package must ship from it.</summary>
+    public string? OriginPostalCode { get; init; }
+
+    /// <summary>Limits package selection to one warehouse.</summary>
+    public int? WarehouseId { get; init; }
+}
+
 /// <summary>Body of <c>POST /api/workspaces/{workspaceId}/carbon-offsets/quote</c>.</summary>
 public sealed class CarbonOffsetQuoteRequest
 {
