@@ -12,7 +12,7 @@ namespace FlexOps.Sdk.Resources.Carriers;
 /// UPS operations via the VisionSuite API proxy (V2 endpoints): tracking as a GET lookup, and deprecated proxy writes.
 /// </summary>
 /// <remarks>
-/// Tracking works with API keys. The <see cref="ObsoleteAttribute">obsolete</see> writes need a user token (API keys
+/// Tracking works with API keys that have <c>tracking:read</c> (otherwise 403 <c>API_KEY_SCOPE_REQUIRED</c>). The <see cref="ObsoleteAttribute">obsolete</see> writes need a user token (API keys
 /// get 403 <c>API_KEY_SCOPE_REQUIRED</c>) and stop working when the proxy is retired on 2027-06-30; use
 /// <see cref="ShippingResource"/> for rates and labels and <see cref="PickupsResource"/> for pickups. The proxy
 /// label route is closed (410 Gone).

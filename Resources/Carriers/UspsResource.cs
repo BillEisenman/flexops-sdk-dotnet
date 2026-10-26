@@ -13,7 +13,9 @@ namespace FlexOps.Sdk.Resources.Carriers;
 /// string, domestic labels through the Gateway label route, and deprecated proxy writes.
 /// </summary>
 /// <remarks>
-/// The lookups work with API keys. The <see cref="ObsoleteAttribute">obsolete</see> writes need a user token (API
+/// The lookups work with API keys that have the permission for the data they read: address, ZIP, city and location
+/// lookups require <c>shipping:read</c>, tracking requires <c>tracking:read</c> and delivery standards require
+/// <c>rates:read</c> (otherwise 403 <c>API_KEY_SCOPE_REQUIRED</c>). The <see cref="ObsoleteAttribute">obsolete</see> writes need a user token (API
 /// keys get 403 <c>API_KEY_SCOPE_REQUIRED</c>) and stop working when the proxy is retired on 2027-06-30; use
 /// <see cref="ShippingResource"/> for rates and labels, <see cref="PickupsResource"/> for pickups and
 /// <see cref="ScanFormsResource"/> for scan forms. Return and international proxy labels are closed (410 Gone).
