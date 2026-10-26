@@ -14,6 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the sandbox defaults it to today. The overload sends your `RequestId`, or a new one for the call, so a retrying
   handler resends the same ID and the Gateway returns the same form instead of creating a second one. Reusing an ID
   with different inputs is 409. `CreateAsync(object)` is unchanged and sends its body as is.
+- `ScanForm`, the Gateway's SCAN form reply: `ScanFormId`, `State` (`ScanFormStates.Created` or `OutcomeUnknown`),
+  `OriginPostalCode`, `TrackingNumbers`, `CreatedAtUtc`, `ScanFormImage` (the base64 PDF, null for sandbox forms and
+  unresolved operations; `GetPdfBytes()` decodes it), `ManifestNumber`, `ManifestDate`, `PackageCount`,
+  `StatusMessage`, `Success`, `ErrorMessage` and `IsSandbox`. `ScanForms.CreateAsync(CreateScanFormRequest)` returns
+  `ApiResponse<ScanForm>`, and the new `ScanForms.ListFormsAsync()` and `GetFormAsync(scanFormId)` return
+  `ScanForm[]` and `ScanForm`. `ListAsync`, `GetAsync` and `CreateAsync(object)` still return untyped JSON, so code
+  written against them is unchanged.
+- Docs: `ScanForms.CreateAsync` throws `FlexOpsException` with status 409 when the `RequestId` was used with
+  different inputs, when the packages already belong to a manifest, or when an operation needs review (its message
+  names the operation). These are not retried.
 
 ### Changed
 - Docs: `Pickups.ScheduleAsync`/`CancelAsync` and `ScanForms.CreateAsync` need `shipping:write` with an API key, and

@@ -224,6 +224,58 @@ static class ResourceRouteChecks
             Check("scan form retry resends its requestId", ids.Count == 2 && ids[0] != Guid.Empty && ids[0] == ids[1], string.Join(", ", ids));
         }
 
+        // SCAN form replies: the Gateway's ScanFormDto, from a fixture of real replies.
+        using (var scanFixtures = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "scan-forms.json"))))
+        {
+            string Reply(string name) => scanFixtures.RootElement.GetProperty(name).GetRawText();
+            string ConflictBody(string name) => scanFixtures.RootElement.GetProperty(name).GetProperty("body").GetRawText();
+
+            handler.Respond(Reply("created"));
+            var created = (await client.ScanForms.CreateAsync(minimal))?.Data;
+            Check("scan form created fields", created is
+            {
+                ScanFormId: "3f2b8c1e9d4a4f6b8a7e2c5d1b0f9e88", State: ScanFormStates.Created, Success: true, IsSandbox: false,
+                ManifestNumber: "9475711899560013735215", PackageCount: 2, OriginPostalCode: "78701",
+                TrackingNumbers: ["9400111899223456789014", "9400111899223456789021"], ErrorMessage: null,
+            }, created?.ToString() ?? "null");
+            Check("scan form createdAtUtc", created?.CreatedAtUtc == new DateTimeOffset(2026, 9, 8, 21, 14, 3, 512, TimeSpan.Zero), $"{created?.CreatedAtUtc:O}");
+            Check("scan form manifestDate", created?.ManifestDate == new DateTime(2026, 9, 8), $"{created?.ManifestDate:O}");
+            Check("scan form PDF", created?.GetPdfBytes() is [(byte)'%', (byte)'P', (byte)'D', (byte)'F', (byte)'-', ..]);
+
+            handler.Respond(Reply("list"));
+            var forms = (await client.ScanForms.ListFormsAsync())?.Data;
+            Expect("scan form list (typed)", "GET", $"/api/workspaces/{Ws}/scan-forms");
+            Check("scan form list", forms is
+            [
+                { IsSandbox: true, ScanFormImage: null, Success: true, PackageCount: 1 },
+                { State: ScanFormStates.OutcomeUnknown, Success: false, ManifestNumber: "", ScanFormImage: null, PackageCount: 2 },
+            ], forms is null ? "null" : string.Join(" | ", forms.Select(f => f.ToString())));
+            Check("scan form sandbox manifest number", forms?[0].ManifestNumber?.StartsWith("SBOX", StringComparison.Ordinal) == true);
+            Check("scan form without a PDF decodes to null", forms?[0].GetPdfBytes() is null);
+
+            handler.Respond(Reply("created"));
+            var one = (await client.ScanForms.GetFormAsync("3f2b8c1e9d4a4f6b8a7e2c5d1b0f9e88"))?.Data;
+            Expect("scan form get (typed)", "GET", $"/api/workspaces/{Ws}/scan-forms/3f2b8c1e9d4a4f6b8a7e2c5d1b0f9e88");
+            Check("scan form get", one?.ScanFormId == "3f2b8c1e9d4a4f6b8a7e2c5d1b0f9e88");
+
+            foreach (var name in new[] { "requestIdReused", "needsReview" })
+            {
+                handler.Respond(HttpStatusCode.Conflict, ConflictBody(name));
+                var before = handler.Calls.Count;
+                try
+                {
+                    await client.ScanForms.CreateAsync(minimal);
+                    failures.Add($"scan form 409 {name}: did not throw");
+                }
+                catch (FlexOpsException ex)
+                {
+                    var expected = scanFixtures.RootElement.GetProperty(name).GetProperty("body").GetProperty("message").GetString();
+                    Check($"scan form 409 {name}", ex.StatusCode == 409 && ex.Message == expected, $"{ex.StatusCode} {ex.Message}");
+                    Check($"scan form 409 {name} is not retried", handler.Calls.Count == before + 1, $"{handler.Calls.Count - before} calls");
+                }
+            }
+        }
+
         // Pickups.
         await client.Pickups.ScheduleAsync(new SchedulePickupRequest
         {
