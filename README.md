@@ -107,7 +107,7 @@ The typed client exposes:
 | `client.Workspaces` | Your workspaces, members, invitations |
 | `client.Shipping` | Rates, labels, multi-package labels, tracking, batch, address validation |
 | `client.Carriers` | Carrier lookups (USPS, UPS, DHL); deprecated proxy writes (USPS, UPS, FedEx, DHL) |
-| `client.Webhooks` | Subscriptions, test deliveries, signature verification |
+| `client.Webhooks` | Subscriptions, test deliveries, signature verification (subscriptions need a signed-in user) |
 | `client.Wallet` | Workspace wallet balance |
 | `client.Insurance` | Quotes, policies, claims |
 | `client.Returns` | RMAs, return labels, receiving |
@@ -156,7 +156,18 @@ await client.Workspaces.InviteMemberAsync("ops@example.com", WorkspaceRole.Admin
 
 ## Webhook subscriptions
 
+Managing webhooks needs a signed-in user's access token. The Gateway refuses API keys on every webhook route,
+reads included (`ListAsync` and `ListDeliveryLogsAsync` as well as `CreateAsync`, `UpdateAsync`, `DeleteAsync`,
+`RotateSecretAsync` and `TestAsync`), with 403 `SIGNED_IN_USER_REQUIRED`, whatever the key's scopes; the SDK throws
+`FlexOpsAuthException` with that `ErrorCode`. Reads are refused too because webhook delivery logs carry each
+delivery's payload (order and customer data). A client constructed with an API key sends only the key, so use a
+client constructed without `apiKey`. Verifying deliveries (below) makes no request and needs no credentials.
+
 ```csharp
+// Sign in as a user (or pass accessToken:); an API key gets 403 SIGNED_IN_USER_REQUIRED here.
+using var client = new FlexOpsTypedClient(baseUrl: "https://gateway.flexops.io", workspaceId: "your-workspace-id");
+await client.Auth.LoginAsync(new { email = "user@company.com", password = "your-password" });
+
 // Leave Events null to receive every event.
 var webhook = await client.Webhooks.CreateAsync(new CreateWebhookRequest
 {

@@ -16,6 +16,16 @@ namespace FlexOps.Sdk.Resources;
 /// <summary>
 /// Webhook subscription management and signature verification.
 /// </summary>
+/// <remarks>
+/// Every method that calls the Gateway needs a signed-in user's access token (the <c>accessToken</c> constructor
+/// argument, <see cref="FlexOpsClient.SetAccessToken"/> or <see cref="AuthResource.LoginAsync"/>). The Gateway refuses
+/// API keys on every webhook route, reads included, with 403 <c>SIGNED_IN_USER_REQUIRED</c>, whatever the key's
+/// scopes; the SDK throws <see cref="FlexOpsAuthException"/> with that <see cref="FlexOpsException.ErrorCode"/>.
+/// Reads are refused too because webhook delivery logs carry each delivery's payload (order and customer data).
+/// A client constructed with an API key sends only the key, even when an access token is also passed, so call
+/// these methods from a client constructed without <c>apiKey</c>. <see cref="VerifySignature"/> makes no request
+/// and needs no credentials.
+/// </remarks>
 public sealed class WebhooksResource
 {
     private readonly FlexOpsClient _client;
@@ -24,6 +34,11 @@ public sealed class WebhooksResource
     public WebhooksResource(FlexOpsClient client) => _client = client;
 
     /// <summary>List all webhook subscriptions for the workspace.</summary>
+    /// <remarks>
+    /// Needs a signed-in user's access token; API keys get 403 <c>SIGNED_IN_USER_REQUIRED</c>. Reads are signed-in
+    /// only, like the writes, because webhook delivery logs carry each delivery's payload (order and customer data).
+    /// </remarks>
+    /// <exception cref="FlexOpsAuthException">The client authenticates with an API key: 403 with <see cref="FlexOpsException.ErrorCode"/> <c>SIGNED_IN_USER_REQUIRED</c>.</exception>
     public async Task<ApiResponse<WebhookSubscription[]>?> ListAsync(CancellationToken ct = default)
     {
         return await _client.GetAsync<ApiResponse<WebhookSubscription[]>>(_client.WsPath("webhooks"), ct);
@@ -33,13 +48,15 @@ public sealed class WebhooksResource
     /// <remarks>
     /// <see cref="CreateWebhookRequest.Events"/> is sent as the Gateway's comma-separated <c>eventTypes</c>;
     /// leave it <c>null</c> to receive every event. <see cref="WebhookSubscription.Secret"/> is set only on
-    /// this response, so store it now.
+    /// this response, so store it now. Needs a signed-in user's access token; API keys get 403
+    /// <c>SIGNED_IN_USER_REQUIRED</c>.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="request"/> is <c>null</c>.</exception>
     /// <exception cref="ArgumentException">
     /// <see cref="CreateWebhookRequest.Events"/> is empty or holds a value that is not a defined
     /// <see cref="WebhookEventType"/>. Nothing is sent.
     /// </exception>
+    /// <exception cref="FlexOpsAuthException">The client authenticates with an API key: 403 with <see cref="FlexOpsException.ErrorCode"/> <c>SIGNED_IN_USER_REQUIRED</c>.</exception>
     public async Task<ApiResponse<WebhookSubscription>?> CreateAsync(CreateWebhookRequest request, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -53,20 +70,26 @@ public sealed class WebhooksResource
     /// <c>url</c>, optional <c>description</c>, and <c>eventTypes</c> as one comma-separated string with no spaces
     /// (for example <c>"LabelCreated,LabelCanceled"</c>). The Gateway ignores an <c>events</c> field and
     /// subscribes to every event. Prefer the <see cref="CreateWebhookRequest"/> overload, which builds and
-    /// checks <c>eventTypes</c> for you.
+    /// checks <c>eventTypes</c> for you. Needs a signed-in user's access token; API keys get 403
+    /// <c>SIGNED_IN_USER_REQUIRED</c>.
     /// </remarks>
+    /// <exception cref="FlexOpsAuthException">The client authenticates with an API key: 403 with <see cref="FlexOpsException.ErrorCode"/> <c>SIGNED_IN_USER_REQUIRED</c>.</exception>
     public async Task<ApiResponse<WebhookSubscription>?> CreateAsync(object request, CancellationToken ct = default)
     {
         return await CreateCoreAsync(request, ct);
     }
 
     /// <summary>Update a webhook subscription. Only the properties set on <paramref name="request"/> are changed.</summary>
-    /// <remarks><see cref="UpdateWebhookRequest.Events"/>, when set, replaces the subscribed events.</remarks>
+    /// <remarks>
+    /// <see cref="UpdateWebhookRequest.Events"/>, when set, replaces the subscribed events. Needs a signed-in user's
+    /// access token; API keys get 403 <c>SIGNED_IN_USER_REQUIRED</c>.
+    /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="request"/> is <c>null</c>.</exception>
     /// <exception cref="ArgumentException">
     /// <see cref="UpdateWebhookRequest.Events"/> is empty or holds a value that is not a defined
     /// <see cref="WebhookEventType"/>. Nothing is sent.
     /// </exception>
+    /// <exception cref="FlexOpsAuthException">The client authenticates with an API key: 403 with <see cref="FlexOpsException.ErrorCode"/> <c>SIGNED_IN_USER_REQUIRED</c>.</exception>
     public async Task<ApiResponse<WebhookSubscription>?> UpdateAsync(string webhookId, UpdateWebhookRequest request, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -78,7 +101,9 @@ public sealed class WebhooksResource
     /// <remarks>
     /// The payload is sent as given, so subscribed events must be <c>eventTypes</c>, one comma-separated string
     /// with no spaces; the Gateway ignores an <c>events</c> field. Prefer the <see cref="UpdateWebhookRequest"/> overload.
+    /// Needs a signed-in user's access token; API keys get 403 <c>SIGNED_IN_USER_REQUIRED</c>.
     /// </remarks>
+    /// <exception cref="FlexOpsAuthException">The client authenticates with an API key: 403 with <see cref="FlexOpsException.ErrorCode"/> <c>SIGNED_IN_USER_REQUIRED</c>.</exception>
     public async Task<ApiResponse<WebhookSubscription>?> UpdateAsync(string webhookId, object data, CancellationToken ct = default)
     {
         return await _client.PutAsync<ApiResponse<WebhookSubscription>>(_client.WsPath($"webhooks/{webhookId}"), data, ct);
@@ -144,24 +169,35 @@ public sealed class WebhooksResource
     }
 
     /// <summary>Delete a webhook subscription. Returns <c>null</c> (204 No Content) on success.</summary>
+    /// <remarks>Needs a signed-in user's access token; API keys get 403 <c>SIGNED_IN_USER_REQUIRED</c>.</remarks>
+    /// <exception cref="FlexOpsAuthException">The client authenticates with an API key: 403 with <see cref="FlexOpsException.ErrorCode"/> <c>SIGNED_IN_USER_REQUIRED</c>.</exception>
     public async Task<ApiResponse<object>?> DeleteAsync(string webhookId, CancellationToken ct = default)
     {
         return await _client.DeleteAsync<ApiResponse<object>>(_client.WsPath($"webhooks/{webhookId}"), ct);
     }
 
     /// <summary>Rotate the signing secret for a webhook.</summary>
+    /// <remarks>Needs a signed-in user's access token; API keys get 403 <c>SIGNED_IN_USER_REQUIRED</c>.</remarks>
+    /// <exception cref="FlexOpsAuthException">The client authenticates with an API key: 403 with <see cref="FlexOpsException.ErrorCode"/> <c>SIGNED_IN_USER_REQUIRED</c>.</exception>
     public async Task<ApiResponse<object>?> RotateSecretAsync(string webhookId, CancellationToken ct = default)
     {
         return await _client.PostAsync<ApiResponse<object>>(_client.WsPath($"webhooks/{webhookId}/rotate-secret"), null, ct);
     }
 
     /// <summary>Send a test delivery to a webhook. It arrives with <c>X-FlexOps-Event: test</c>.</summary>
+    /// <remarks>Needs a signed-in user's access token; API keys get 403 <c>SIGNED_IN_USER_REQUIRED</c>.</remarks>
+    /// <exception cref="FlexOpsAuthException">The client authenticates with an API key: 403 with <see cref="FlexOpsException.ErrorCode"/> <c>SIGNED_IN_USER_REQUIRED</c>.</exception>
     public async Task<ApiResponse<object>?> TestAsync(string webhookId, CancellationToken ct = default)
     {
         return await _client.PostAsync<ApiResponse<object>>(_client.WsPath($"webhooks/{webhookId}/test"), null, ct);
     }
 
     /// <summary>List delivery logs for a webhook.</summary>
+    /// <remarks>
+    /// Needs a signed-in user's access token; API keys get 403 <c>SIGNED_IN_USER_REQUIRED</c>. Reads are signed-in
+    /// only, like the writes, because webhook delivery logs carry each delivery's payload (order and customer data).
+    /// </remarks>
+    /// <exception cref="FlexOpsAuthException">The client authenticates with an API key: 403 with <see cref="FlexOpsException.ErrorCode"/> <c>SIGNED_IN_USER_REQUIRED</c>.</exception>
     public async Task<ApiResponse<object[]>?> ListDeliveryLogsAsync(string webhookId, CancellationToken ct = default)
     {
         return await _client.GetAsync<ApiResponse<object[]>>(_client.WsPath($"webhooks/{webhookId}/deliveries"), ct);
