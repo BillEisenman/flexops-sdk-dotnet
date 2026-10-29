@@ -43,6 +43,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   constructed with an API key sends only the key. The README webhook example now signs in first.
   `VerifySignature` needs no credentials. No behavior change.
 
+### Fixed
+- `Carriers.Usps.CancelPickupAsync(confirmationNumber)`, `CancelDomesticLabelAsync(trackingNumber)` and
+  `CancelInternationalLabelAsync(internationalTrackingNumber)` send what they cancel. Before, they sent no identifier,
+  so VisionSuite answered 400 and nothing was cancelled. A blank value is refused before any request. The
+  parameterless overloads are gone: they could never succeed.
+
 ## [3.2.0] - 2026-10-22
 
 3.2.0 requires a maximum total price on multi-package labels: the Gateway refuses to buy a box that would take the shipment above it. It changes only the multi-package call released earlier today.
