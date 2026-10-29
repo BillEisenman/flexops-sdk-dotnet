@@ -460,9 +460,19 @@ static class ResourceRouteChecks
         Expect("fedex cancel pickup", "PUT", "/api/ApiProxy/api/v3/CarrierPickup/putFedExCancelCarrierPickupRequest", """{"pickupConfirmationCode":"1"}""");
         Check("proxy write carries a key", Guid.TryParse(handler.Calls[^1].IdempotencyKey, out _), handler.Calls[^1].IdempotencyKey ?? "none");
         handler.RespondNoContent();
-        await client.Carriers.Usps.CancelPickupAsync();
-        Expect("usps cancel pickup", "DELETE", "/api/ApiProxy/api/v3/CarrierPickup/cancelUspsCarrierPickupSchedule");
+        // USPS cancels name what they cancel in the query string; without it VSCS answers 400.
+        await client.Carriers.Usps.CancelPickupAsync("WTC 123");
+        Expect("usps cancel pickup", "DELETE", "/api/ApiProxy/api/v3/CarrierPickup/cancelUspsCarrierPickupSchedule?confirmationNumber=WTC%20123");
         Check("proxy DELETE carries no key", handler.Calls[^1].IdempotencyKey is null, handler.Calls[^1].IdempotencyKey ?? "");
+        handler.RespondNoContent();
+        await client.Carriers.Usps.CancelDomesticLabelAsync("9400111899223456789012");
+        Expect("usps cancel domestic label", "DELETE", "/api/ApiProxy/api/v3/Shipping/cancelUspsDomesticShipmentLabel?trackingNumber=9400111899223456789012");
+        handler.RespondNoContent();
+        await client.Carriers.Usps.CancelInternationalLabelAsync("LZ123456789US");
+        Expect("usps cancel international label", "DELETE", "/api/ApiProxy/api/v3/Shipping/cancelUspsInternationalShipmentLabel?internationalTrackingNumber=LZ123456789US");
+        var blankRefused = false;
+        try { await client.Carriers.Usps.CancelPickupAsync(" "); } catch (ArgumentException) { blankRefused = true; }
+        Check("usps cancel pickup refuses a blank confirmation number", blankRefused, blankRefused.ToString());
 #pragma warning restore CS0618
 
         // Read-only carrier lookups: GET through the proxy with the parameters in the query string.

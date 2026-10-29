@@ -136,17 +136,25 @@ public sealed class UspsResource
     }
 
     /// <summary>Cancel a domestic shipment label.</summary>
+    /// <param name="trackingNumber">The label's tracking number.</param>
+    /// <param name="ct">Cancellation token.</param>
     [Obsolete(CarriersResource.LegacyProxyWriteMessage)]
-    public async Task<ApiResponse<object>?> CancelDomesticLabelAsync(CancellationToken ct = default)
+    public async Task<ApiResponse<object>?> CancelDomesticLabelAsync(string trackingNumber, CancellationToken ct = default)
     {
-        return await _client.DeleteAsync<ApiResponse<object>>(Proxy("api/v3/Shipping/cancelUspsDomesticShipmentLabel"), ct);
+        ArgumentException.ThrowIfNullOrWhiteSpace(trackingNumber);
+        return await _client.DeleteAsync<ApiResponse<object>>(CarriersResource.ProxyPath("api/v3/Shipping/cancelUspsDomesticShipmentLabel",
+            new Dictionary<string, string> { ["trackingNumber"] = trackingNumber }), ct);
     }
 
     /// <summary>Cancel an international shipment label.</summary>
+    /// <param name="internationalTrackingNumber">The label's international tracking number.</param>
+    /// <param name="ct">Cancellation token.</param>
     [Obsolete(CarriersResource.LegacyProxyWriteMessage)]
-    public async Task<ApiResponse<object>?> CancelInternationalLabelAsync(CancellationToken ct = default)
+    public async Task<ApiResponse<object>?> CancelInternationalLabelAsync(string internationalTrackingNumber, CancellationToken ct = default)
     {
-        return await _client.DeleteAsync<ApiResponse<object>>(Proxy("api/v3/Shipping/cancelUspsInternationalShipmentLabel"), ct);
+        ArgumentException.ThrowIfNullOrWhiteSpace(internationalTrackingNumber);
+        return await _client.DeleteAsync<ApiResponse<object>>(CarriersResource.ProxyPath("api/v3/Shipping/cancelUspsInternationalShipmentLabel",
+            new Dictionary<string, string> { ["internationalTrackingNumber"] = internationalTrackingNumber }), ct);
     }
 
     /// <summary>Schedule a USPS carrier pickup.</summary>
@@ -157,10 +165,14 @@ public sealed class UspsResource
     }
 
     /// <summary>Cancel a USPS carrier pickup.</summary>
+    /// <param name="confirmationNumber">The pickup's confirmation number.</param>
+    /// <param name="ct">Cancellation token.</param>
     [Obsolete(CarriersResource.LegacyProxyWriteMessage)]
-    public async Task<ApiResponse<object>?> CancelPickupAsync(CancellationToken ct = default)
+    public async Task<ApiResponse<object>?> CancelPickupAsync(string confirmationNumber, CancellationToken ct = default)
     {
-        return await _client.DeleteAsync<ApiResponse<object>>(Proxy("api/v3/CarrierPickup/cancelUspsCarrierPickupSchedule"), ct);
+        ArgumentException.ThrowIfNullOrWhiteSpace(confirmationNumber);
+        return await _client.DeleteAsync<ApiResponse<object>>(CarriersResource.ProxyPath("api/v3/CarrierPickup/cancelUspsCarrierPickupSchedule",
+            new Dictionary<string, string> { ["confirmationNumber"] = confirmationNumber }), ct);
     }
 
     /// <summary>Create a USPS scan form (SCAN/manifest).</summary>
