@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 dotnet restore                                                          # Restore packages
 dotnet build                                                            # Build
 dotnet build --configuration Release -p:TreatWarningsAsErrors=true      # CI build
-dotnet test                                                             # Run tests
+dotnet run --project tests/FlexOps.Sdk.ContractCheck --configuration Release   # Contract checks (CI's test step)
 dotnet pack --configuration Release                                     # Produce NuGet package
 ```
 
