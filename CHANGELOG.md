@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-10-30
+
 ### Added
 - `ScanForms.CreateAsync(CreateScanFormRequest)` with the Gateway's SCAN form request fields: `TrackingNumbers`,
   `ManifestDate` (`DateOnly`, sent as `yyyy-MM-dd`), `RequestId`, `OriginPostalCode` and `WarehouseId`. Live creation
@@ -26,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   names the operation). These are not retried.
 
 ### Changed
+- The Gateway previews sandbox labels too: a `test_` key now needs `maximumPostageAmount`, and the label comes from the approval.
 - Docs: `Pickups.ScheduleAsync`/`CancelAsync` and `ScanForms.CreateAsync` need `shipping:write` with an API key, and
   the public demo keys cannot use them. `Rules.TestAsync` needs `shipping:read`. Shipping rule changes
   (`Rules.CreateAsync`, `UpdateAsync`, `DeleteAsync`, `ReorderAsync`) and member changes
